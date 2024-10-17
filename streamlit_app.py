@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 import plotly.graph_objs as go
@@ -24,9 +26,19 @@ def fetch_temperatures():
 
     temperatures = {}
 
+    # Retry strategy for failed requests
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504],
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    http = requests.Session()
+    http.mount("http://", adapter)
+
     try:
         for board, url in urls.items():
-            response = requests.get(url)
+            response = http.get(url, timeout=10)
             response.raise_for_status()
 
             # Parsing XML response
@@ -51,8 +63,8 @@ def fetch_temperatures():
 
 # Append new temperature data to the CSV file
 def save_to_csv(data):
-    timestamp = datetime.now(ATHENS_TZ)
-    data['timestamp'] = timestamp
+    timestamp = datetime.now(pytz.utc).astimezone(ATHENS_TZ)
+    data['timestamp'] = timestamp.isoformat()
 
     if os.path.exists(CSV_FILE):
         df = pd.read_csv(CSV_FILE)
@@ -71,31 +83,29 @@ def save_to_csv(data):
 def clear_old_data():
     if os.path.exists(CSV_FILE):
         df = pd.read_csv(CSV_FILE)
-        one_week_ago = datetime.now() - timedelta(days=7)
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        one_week_ago = datetime.now(ATHENS_TZ) - timedelta(days=7)
+        df['timestamp'] = pd.to_datetime(df['timestamp'],  utc=True, format='ISO8601')
         df = df[df['timestamp'] > one_week_ago]
         df.to_csv(CSV_FILE, index=False)
-
 
 # Load temperature data from CSV for plotting
 def load_data(time_range):
     if os.path.exists(CSV_FILE):
         df = pd.read_csv(CSV_FILE)
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'],  utc=True, format='ISO8601')
+        df['timestamp'] = df['timestamp'].dt.tz_convert(ATHENS_TZ)  # Convert UTC to Athens time
 
         # Filter the data based on the selected time range
         if time_range == 'Display Temperatures for the past Week':
-            return df[df['timestamp'] >= (datetime.now() - timedelta(days=7))]
+            return df[df['timestamp'] >= (datetime.now(ATHENS_TZ) - timedelta(days=7))]
         elif time_range == 'Display Temperatures for the past 3 Days':
-            return df[df['timestamp'] >= (datetime.now() - timedelta(days=3))]
+            return df[df['timestamp'] >= (datetime.now(ATHENS_TZ) - timedelta(days=3))]
         elif time_range == 'Display Temperatures for the past Day':
-            return df[df['timestamp'] >= (datetime.now() - timedelta(days=1))]
+            return df[df['timestamp'] >= (datetime.now(ATHENS_TZ) - timedelta(days=1))]
         else:
             return df
     else:
         return pd.DataFrame(columns=['timestamp', 'temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5', 'temp_6'])
-
-
 # Plot temperature data
 def plot_temperatures(df):
     if not df.empty:
