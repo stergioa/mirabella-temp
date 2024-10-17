@@ -6,9 +6,13 @@ from datetime import datetime, timedelta
 import plotly.graph_objs as go
 import os
 import time
+import pytz
 
 # path to save the CSV file
 CSV_FILE = 'temperature_data.csv'
+
+# Get timezone of Athens
+ATHENS_TZ = pytz.timezone('Europe/Athens')
 
 # Automatically fetch new data every 2 minutes
 def fetch_temperatures():
@@ -47,7 +51,7 @@ def fetch_temperatures():
 
 # Append new temperature data to the CSV file
 def save_to_csv(data):
-    timestamp = datetime.now()
+    timestamp = datetime.now(ATHENS_TZ)
     data['timestamp'] = timestamp
 
     if os.path.exists(CSV_FILE):
