@@ -2,3 +2,4 @@ streamlit
 plotly
 pytz
 urllib3
+numpy
