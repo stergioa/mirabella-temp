@@ -43,7 +43,6 @@ def plot_temperatures(df):
             xaxis=dict(title_font=dict(size=14), automargin=True),  # X-axis title with auto margins
             yaxis=dict(title_font=dict(size=14), automargin=True),  # Y-axis title with auto margins
             margin=dict(l=20, r=20, t=40, b=40),  # Tighter margins
-            hovermode=False                 # Disable hover tooltips
         )
 
         # Custom HTML with white underline and colored numbers

@@ -3,3 +3,4 @@ plotly
 pytz
 urllib3
 numpy
+pandas
