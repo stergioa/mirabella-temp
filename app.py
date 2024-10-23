@@ -114,6 +114,7 @@ def plot_temperatures(df):
 
 
 def main():
+    st.set_page_config(page_title="Boiler Temp")
     st.title("Boiler Temperature Monitoring")
 
     # Always load the full dataset first
