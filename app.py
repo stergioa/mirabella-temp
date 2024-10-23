@@ -11,42 +11,51 @@ CSV_FILE = 'temperature_data.csv'
 # Get timezone of Athens
 ATHENS_TZ = pytz.timezone('Europe/Athens')
 
-# Load temperature data from CSV for plotting
-def load_data(time_range):
+
+def load_data():
+    # Always load the full dataset (no filtering yet)
     if os.path.exists(CSV_FILE):
         df = pd.read_csv(CSV_FILE)
         df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, format='ISO8601')
         df['timestamp'] = df['timestamp'].dt.tz_convert(ATHENS_TZ)  # Convert UTC to Athens time
-
-        # Filter the data based on the selected time range
-        if time_range == 'Past Week':
-            return df[df['timestamp'] >= (datetime.now(ATHENS_TZ) - timedelta(days=7))]
-        elif time_range == 'Past 3 Days':
-            return df[df['timestamp'] >= (datetime.now(ATHENS_TZ) - timedelta(days=3))]
-        elif time_range == 'Past Day':
-            return df[df['timestamp'] >= (datetime.now(ATHENS_TZ) - timedelta(days=1))]
-        else:
-            return df
+        return df
     else:
         return pd.DataFrame(columns=['timestamp', 'temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5', 'temp_6'])
+
+
+# Filter data based on the selected time range
+def filter_data(df, time_range):
+    now = datetime.now(ATHENS_TZ)
+
+    if time_range == 'Past Week':
+        return df[df['timestamp'] >= (now - timedelta(days=7))]
+    elif time_range == 'Past 3 Days':
+        return df[df['timestamp'] >= (now - timedelta(days=3))]
+    elif time_range == 'Past Day':
+        return df[df['timestamp'] >= now.replace(hour=0, minute=0, second=0, microsecond=0)]  # From midnight
+    else:
+        return df
 
 # Plot temperature data with dynamic width
 def plot_temperatures(df):
     if not df.empty:
-        # Define layout properties with centering for titles
+        # Define layout properties with centering for legends
         common_layout = dict(
             autosize=True,
             plot_bgcolor='rgba(0,0,0,0)',  # Transparent background
             font=dict(size=12),             # Responsive font size
-            title_font=dict(size=16),       # Responsive title font size
-            showlegend=False,               # Remove legends
+            showlegend=True,                # Enable legends for each plot
+            legend=dict(
+                orientation="h",            # Horizontal legend
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ),
             xaxis=dict(title_font=dict(size=14), automargin=True),  # X-axis title with auto margins
             yaxis=dict(title_font=dict(size=14), automargin=True),  # Y-axis title with auto margins
             margin=dict(l=20, r=20, t=40, b=40),  # Tighter margins
         )
-
-        # Custom HTML with white underline and colored numbers
-        underline_style = "text-decoration: underline; color: white;"  # White underline styling
 
         # First plot: Rooms 11-12 (Red) & 13-14 (Blue)
         fig1 = go.Figure()
@@ -55,15 +64,9 @@ def plot_temperatures(df):
         fig1.add_trace(
             go.Scatter(x=df['timestamp'], y=df['temp_2'], mode='lines', name='Rooms 13-14', line=dict(color='blue')))
         fig1.update_layout(
-            title=dict(
-                text=f"<span style='{underline_style}'>Rooms <span style='color:red;'>11-12</span> & <span style='color:blue;'>13-14</span></span>",
-                x=0.5,  # Center the title
-                xanchor='center',  # Ensure title is centered
-                yanchor='top'
-            ),
             xaxis_title="Date",
             yaxis_title="Temperature (°C)",
-            **common_layout
+            **common_layout  # No 'title' specified
         )
 
         # Second plot: Rooms 15-16 (Red) & 17-18 (Blue)
@@ -73,15 +76,9 @@ def plot_temperatures(df):
         fig2.add_trace(
             go.Scatter(x=df['timestamp'], y=df['temp_4'], mode='lines', name='Rooms 17-18', line=dict(color='blue')))
         fig2.update_layout(
-            title=dict(
-                text=f"<span style='{underline_style}'>Rooms <span style='color:red;'>15-16</span> & <span style='color:blue;'>17-18</span></span>",
-                x=0.5,
-                xanchor='center',
-                yanchor='top'
-            ),
             xaxis_title="Date",
             yaxis_title="Temperature (°C)",
-            **common_layout
+            **common_layout  # No 'title' specified
         )
 
         # Third plot: Rooms 21-23 (Red) & 24-28 (Blue)
@@ -91,48 +88,49 @@ def plot_temperatures(df):
         fig3.add_trace(
             go.Scatter(x=df['timestamp'], y=df['temp_6'], mode='lines', name='Rooms 24-28', line=dict(color='blue')))
         fig3.update_layout(
-            title=dict(
-                text=f"<span style='{underline_style}'>Rooms <span style='color:red;'>21-23</span> & <span style='color:blue;'>24-28</span></span>",
-                x=0.5,
-                xanchor='center',
-                yanchor='top'
-            ),
             xaxis_title="Date",
             yaxis_title="Temperature (°C)",
-            **common_layout
+            **common_layout  # No 'title' specified
         )
 
-        # Plotly chart configuration to hide toolbar
+        # Plotly chart configuration to hide toolbar and disable zoom on mobile
         config = {
-            'displayModeBar': False  # Disable the toolbar
+            'displayModeBar': False,  # Disable the toolbar
+            'scrollZoom': False,      # Disable zoom on scroll or pinch on mobile
+            'staticPlot': False,       # Completely disable all interactions
+            'responsive': True        # Make charts responsive to screen size
         }
 
-        # Display the three plots without toolbars and hover tooltips
-        st.plotly_chart(fig1, use_container_width=True, config=config)
-        st.plotly_chart(fig2, use_container_width=True, config=config)
-        st.plotly_chart(fig3, use_container_width=True, config=config)
+        # Display the three plots with legends instead of titles
+        with st.expander("Rooms 11-12 & 13-14"):
+            st.plotly_chart(fig1, use_container_width=True, config=config)
+        with st.expander("Rooms 15-16 & 17-18"):
+            st.plotly_chart(fig2, use_container_width=True, config=config)
+        with st.expander("Rooms 21-23 & 24-28"):
+            st.plotly_chart(fig3, use_container_width=True, config=config)
     else:
         st.write("No data available.")
 
 
 
-
-
-# Main function for the Streamlit app
 def main():
     st.title("Boiler Temperature Monitoring")
 
-    # Use a narrower column width to fit mobile screens better
-    # with col:
+    # Always load the full dataset first
+    df = load_data()
+
+    # Select time range
     time_range = st.selectbox(
         "Select Time Range",
-        ['Past Week',
-         'Past 3 Days',
-         'Past Day']
+        ['Past Week', 'Past 3 Days', 'Past Day']
     )
 
-    df = load_data(time_range)
-    plot_temperatures(df)
+    # Filter data based on the selected time range
+    filtered_df = filter_data(df, time_range)
+
+    # Plot the filtered data
+    plot_temperatures(filtered_df)
+
 
 if __name__ == "__main__":
     main()
