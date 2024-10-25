@@ -101,13 +101,21 @@ def plot_temperatures(df):
             'responsive': True        # Make charts responsive to screen size
         }
 
-        # Display the three plots with legends instead of titles
-        with st.expander("Rooms 11-12 & 13-14"):
+        # with st.expander("Rooms 11-12 & 13-14"):
+        #     st.plotly_chart(fig1, use_container_width=True, config=config)
+        # with st.expander("Rooms 15-16 & 17-18"):
+        #     st.plotly_chart(fig2, use_container_width=True, config=config)
+        # with st.expander("Rooms 21-23 & 24-28"):
+        #     st.plotly_chart(fig3, use_container_width=True, config=config)
+
+        tab1, tab2, tab3 = st.tabs(["Rooms 11-14", "15-18", "21-28"])
+        with tab1:
             st.plotly_chart(fig1, use_container_width=True, config=config)
-        with st.expander("Rooms 15-16 & 17-18"):
+        with tab2:
             st.plotly_chart(fig2, use_container_width=True, config=config)
-        with st.expander("Rooms 21-23 & 24-28"):
+        with tab3:
             st.plotly_chart(fig3, use_container_width=True, config=config)
+
     else:
         st.write("No data available.")
 
