@@ -53,6 +53,7 @@ def plot_temperatures(df):
             xaxis=dict(title_font=dict(size=14), automargin=True),  # X-axis title with auto margins
             yaxis=dict(title_font=dict(size=14), automargin=True),  # Y-axis title with auto margins
             margin=dict(l=20, r=20, t=40, b=40),  # Tighter margins
+            height=300
         )
 
         # First plot: Rooms 11-12 (Red) & 13-14 (Blue)
@@ -126,6 +127,28 @@ def calculate_sunlight_remaining(sunrise, sunset):
 
 def main():
     st.set_page_config(page_title="Boiler Temp")
+    st.markdown(
+        """
+        <style>
+        /* Hide the header completely */
+        header.stAppHeader {
+            display: none; /* Completely remove the header */
+        }
+
+        /* Remove padding and margin from the main container to eliminate space */
+        .stApp {
+            padding-top: -3rem !important;  /* Set top padding to zero */
+            margin-top: -3rem !important;   /* Set top margin to zero */
+        }
+
+        /* Remove padding from the first element inside the main app */
+        .stContainer {
+            padding-top: 0rem;  /* Ensure no padding is applied */
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
     st.title("Boiler Temperature Monitoring")
 
     # load data
