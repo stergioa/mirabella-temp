@@ -5,36 +5,35 @@ import plotly.graph_objs as go
 import pytz
 import os
 
-# path to the CSV file
+# Path to the CSV file
 CSV_FILE = 'temperature_data.csv'
 
-# Get timezone of Athens
+# Athens timezone
 ATHENS_TZ = pytz.timezone('Europe/Athens')
 
 
 def load_data():
-    # Always load the full dataset (no filtering yet)
+    # Always load the full dataset
     if os.path.exists(CSV_FILE):
         df = pd.read_csv(CSV_FILE)
+        # Convert timestamp to datetime, handling ISO8601 automatically
         df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, format='ISO8601')
-        df['timestamp'] = df['timestamp'].dt.tz_convert(ATHENS_TZ)  # Convert UTC to Athens time
+        df['timestamp'] = df['timestamp'].dt.tz_convert(ATHENS_TZ)
         return df
-    else:
-        return pd.DataFrame(columns=['timestamp', 'temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5', 'temp_6'])
+    return pd.DataFrame()
 
 
-# Filter data based on the selected time range
+
 def filter_data(df, time_range):
     now = datetime.now(ATHENS_TZ)
-
     if time_range == 'Past Week':
-        return df[df['timestamp'] >= (now - timedelta(days=7))]
+        return df[df['timestamp'] >= now - timedelta(days=7)]
     elif time_range == 'Past 3 Days':
-        return df[df['timestamp'] >= (now - timedelta(days=3))]
+        return df[df['timestamp'] >= now - timedelta(days=3)]
     elif time_range == 'Past Day':
-        return df[df['timestamp'] >= now.replace(hour=0, minute=0, second=0, microsecond=0)]  # From midnight
-    else:
-        return df
+        return df[df['timestamp'] >= now.replace(hour=0, minute=0, second=0, microsecond=0)]
+    return df
+
 
 # Plot temperature data with dynamic width
 def plot_temperatures(df):
@@ -120,26 +119,107 @@ def plot_temperatures(df):
         st.write("No data available.")
 
 
+def calculate_sunlight_remaining(sunrise, sunset):
+    now = datetime.now(ATHENS_TZ)
+    if now < sunrise:
+        return 100  # Full sunlight remaining
+    elif now > sunset:
+        return 0  # No sunlight remaining
+    else:
+        total_duration = (sunset - sunrise).total_seconds()
+        elapsed_duration = (now - sunrise).total_seconds()
+        return max(0, min(100, 100 * (total_duration - elapsed_duration) / total_duration))
+
 
 def main():
     st.set_page_config(page_title="Boiler Temp")
     st.title("Boiler Temperature Monitoring")
 
-    # Always load the full dataset first
+    # Load data
     df = load_data()
 
-    # Select time range
-    time_range = st.selectbox(
-        "Select Time Range",
-        ['Past Week', 'Past 3 Days', 'Past Day']
-    )
+    # Display weather data if available
+    if not df.empty:
+        latest_data = df.iloc[-1]
+        current_temp = latest_data['current_temp']
+        current_humidity = latest_data['current_humidity']
+        current_cloudiness = latest_data['current_cloudiness']
+        current_sunrise = pd.to_datetime(latest_data['current_sunrise'])
+        current_sunset = pd.to_datetime(latest_data['current_sunset'])
+        three_day_forecast_avg = latest_data.get('three_day_forecast_avg', 'N/A')
+        sunlight_remaining = calculate_sunlight_remaining(current_sunrise, current_sunset)
 
-    # Filter data based on the selected time range
-    filtered_df = filter_data(df, time_range)
+        col1, col2, col3 = st.columns([0.5, 1, 1])
 
-    # Plot the filtered data
-    plot_temperatures(filtered_df)
+        # with col1:
+        #     st.metric("Current Exterior Temp", f"{current_temp:.1f} °C")
+        #
+        # with col2:
+        #     col2a, col2b = st.columns([1, 1])
+        #     with col2a:
+        #         st.metric("Current Cloudiness", f"{current_cloudiness:.1f} %")
+        #     with col2b:
+        #         st.metric("Next 3-Day Cloudiness", f"{three_day_forecast_avg:.1f} %")
+        # with col3:
+        #     col3a, col3b = st.columns([1, 1])
+        #     with col3a:
+        #         st.metric("Sunrise Time", f"{current_sunrise.strftime('%H:%M')}")
+        #     with col3b:
+        #         st.metric("Sunset Time", f"{current_sunset.strftime('%H:%M')}")
+        # Move metrics to the sidebar
+        with st.sidebar:
+            st.markdown("<h3 style='text-align: center;'>Weather Metrics</h3>", unsafe_allow_html=True)
 
+            # Current Exterior Temperature
+            st.markdown(f"<h4 style='text-align: center;'>Current Exterior Temp:</h4>", unsafe_allow_html=True)
+            st.markdown(
+                f"<h3 style='text-align: center;'><span style='font-size: 24px;'>{current_temp:.1f} °C</span></h3>",
+                unsafe_allow_html=True)
+
+            # Separator for Cloudiness metrics
+            st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)  # Reduced margin
+
+            # Center Cloudiness metrics
+            st.markdown("<h3 style='text-align: center;'>Cloud Coverage (%)</h3>", unsafe_allow_html=True)
+
+            # Using columns for Cloudiness metrics
+            col_sidebar_a, col_sidebar_b = st.columns(2)
+            with col_sidebar_a:
+                st.markdown(
+                    f"<h4 style='text-align: center;'>Current:<br><span style='font-size: 18px;'>{current_cloudiness:.1f} %</span></h4>",
+                    unsafe_allow_html=True)
+            with col_sidebar_b:
+                st.markdown(
+                    f"<h4 style='text-align: center;'>Next 3-Days:<br><span style='font-size: 18px;'>{three_day_forecast_avg:.1f} %</span></h4>",
+                    unsafe_allow_html=True)
+
+            # Separator for Daylight Information
+            st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)  # Reduced margin
+
+            # Center Daylight Information
+            st.markdown("<h3 style='text-align: center;'>Daylight Information</h3>", unsafe_allow_html=True)
+
+            # Using columns for Sunrise and Sunset metrics
+            col_sidebar_c, col_sidebar_d = st.columns(2)
+            with col_sidebar_c:
+                st.markdown(
+                    f"<h4 style='text-align: center;'>Sunrise Time:<br><span style='font-size: 18px;'>{current_sunrise.strftime('%H:%M')}</span></h4>",
+                    unsafe_allow_html=True)
+            with col_sidebar_d:
+                st.markdown(
+                    f"<h4 style='text-align: center;'>Sunset Time:<br><span style='font-size: 18px;'>{current_sunset.strftime('%H:%M')}</span></h4>",
+                    unsafe_allow_html=True)
+            st.markdown(
+                "<h4 style='text-align: center;'><a href='https://openweathermap.org/city/263824' target='_blank' style='text-decoration: none;'>Weather Forecast Agios Nikolaos</a></h4>",
+                unsafe_allow_html=True)
+
+        # plot historical temperature data
+        time_range = st.selectbox("Select Time Range", ['Past Week', 'Past 3 Days', 'Past Day'])
+        filtered_df = filter_data(df, time_range)
+        plot_temperatures(filtered_df)
+
+    else:
+        st.error("No weather data available.")
 
 if __name__ == "__main__":
     main()
