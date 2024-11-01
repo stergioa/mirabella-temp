@@ -149,7 +149,7 @@ def main():
         three_day_forecast_avg = latest_data.get('three_day_forecast_avg', 'N/A')
         sunlight_remaining = calculate_sunlight_remaining(current_sunrise, current_sunset)
 
-        col1, col2, col3 = st.columns([0.5, 1, 1])
+        # col1, col2, col3 = st.columns([0.5, 1, 1])
 
         # with col1:
         #     st.metric("Current Exterior Temp", f"{current_temp:.1f} °C")
@@ -168,10 +168,10 @@ def main():
         #         st.metric("Sunset Time", f"{current_sunset.strftime('%H:%M')}")
         # Move metrics to the sidebar
         with st.sidebar:
-            st.markdown("<h3 style='text-align: center;'>Weather Metrics</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='text-align: center;'>Weather Conditions</h3>", unsafe_allow_html=True)
 
             # Current Exterior Temperature
-            st.markdown(f"<h4 style='text-align: center;'>Current Exterior Temp:</h4>", unsafe_allow_html=True)
+            st.markdown(f"<h3 style='text-align: center;'>Current Exterior Temperature:</h3>", unsafe_allow_html=True)
             st.markdown(
                 f"<h3 style='text-align: center;'><span style='font-size: 24px;'>{current_temp:.1f} °C</span></h3>",
                 unsafe_allow_html=True)
