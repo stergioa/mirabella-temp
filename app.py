@@ -5,7 +5,6 @@ import plotly.graph_objs as go
 import pytz
 import os
 
-# Path to the CSV file
 CSV_FILE = 'temperature_data.csv'
 
 # Athens timezone
@@ -13,7 +12,7 @@ ATHENS_TZ = pytz.timezone('Europe/Athens')
 
 
 def load_data():
-    # Always load the full dataset
+    # load full dataset
     if os.path.exists(CSV_FILE):
         df = pd.read_csv(CSV_FILE)
         # Convert timestamp to datetime, handling ISO8601 automatically
@@ -35,7 +34,7 @@ def filter_data(df, time_range):
     return df
 
 
-# Plot temperature data with dynamic width
+# plot temperature data with dynamic width
 def plot_temperatures(df):
     if not df.empty:
         # Define layout properties with centering for legends
@@ -100,13 +99,7 @@ def plot_temperatures(df):
             'responsive': True        # Make charts responsive to screen size
         }
 
-        # with st.expander("Rooms 11-12 & 13-14"):
-        #     st.plotly_chart(fig1, use_container_width=True, config=config)
-        # with st.expander("Rooms 15-16 & 17-18"):
-        #     st.plotly_chart(fig2, use_container_width=True, config=config)
-        # with st.expander("Rooms 21-23 & 24-28"):
-        #     st.plotly_chart(fig3, use_container_width=True, config=config)
-
+        # create tabs to chose rooms
         tab1, tab2, tab3 = st.tabs(["Rooms 11-14", "15-18", "21-28"])
         with tab1:
             st.plotly_chart(fig1, use_container_width=True, config=config)
@@ -118,7 +111,7 @@ def plot_temperatures(df):
     else:
         st.write("No data available.")
 
-
+# function that calculated remaining sunlight in a day
 def calculate_sunlight_remaining(sunrise, sunset):
     now = datetime.now(ATHENS_TZ)
     if now < sunrise:
@@ -135,12 +128,12 @@ def main():
     st.set_page_config(page_title="Boiler Temp")
     st.title("Boiler Temperature Monitoring")
 
-    # Load data
+    # load data
     df = load_data()
 
-    # Display weather data if available
+    # display weather data if available
     if not df.empty:
-        latest_data = df.iloc[-1]
+        latest_data = df.iloc[-1] # most recent data
         current_temp = latest_data['current_temp']
         current_humidity = latest_data['current_humidity']
         current_cloudiness = latest_data['current_cloudiness']
@@ -149,69 +142,67 @@ def main():
         three_day_forecast_avg = latest_data.get('three_day_forecast_avg', 'N/A')
         sunlight_remaining = calculate_sunlight_remaining(current_sunrise, current_sunset)
 
-        # col1, col2, col3 = st.columns([0.5, 1, 1])
-
-        # with col1:
-        #     st.metric("Current Exterior Temp", f"{current_temp:.1f} °C")
-        #
-        # with col2:
-        #     col2a, col2b = st.columns([1, 1])
-        #     with col2a:
-        #         st.metric("Current Cloudiness", f"{current_cloudiness:.1f} %")
-        #     with col2b:
-        #         st.metric("Next 3-Day Cloudiness", f"{three_day_forecast_avg:.1f} %")
-        # with col3:
-        #     col3a, col3b = st.columns([1, 1])
-        #     with col3a:
-        #         st.metric("Sunrise Time", f"{current_sunrise.strftime('%H:%M')}")
-        #     with col3b:
-        #         st.metric("Sunset Time", f"{current_sunset.strftime('%H:%M')}")
         # Move metrics to the sidebar
         with st.sidebar:
-            st.markdown("<h3 style='text-align: center;'>Weather Conditions</h3>", unsafe_allow_html=True)
-
             # Current Exterior Temperature
-            st.markdown(f"<h3 style='text-align: center;'>Current Exterior Temperature:</h3>", unsafe_allow_html=True)
             st.markdown(
-                f"<h3 style='text-align: center;'><span style='font-size: 24px;'>{current_temp:.1f} °C</span></h3>",
-                unsafe_allow_html=True)
+                "<h3 style='text-align: center; margin: 0;'>Current Exterior Temperature</h3>",
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f"<h3 style='text-align: center; margin: 0;'><span style='font-size: 30px; font-weight: bold;'>{current_temp:.1f} °C</span></h3>",
+                unsafe_allow_html=True,
+            )
 
             # Separator for Cloudiness metrics
-            st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)  # Reduced margin
+            st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)
 
-            # Center Cloudiness metrics
-            st.markdown("<h3 style='text-align: center;'>Cloud Coverage (%)</h3>", unsafe_allow_html=True)
+            # Cloud Coverage
+            st.markdown("<h3 style='text-align: center; margin: 0;'>Cloud Coverage (%)</h3>", unsafe_allow_html=True)
 
             # Using columns for Cloudiness metrics
             col_sidebar_a, col_sidebar_b = st.columns(2)
             with col_sidebar_a:
                 st.markdown(
-                    f"<h4 style='text-align: center;'>Current:<br><span style='font-size: 18px;'>{current_cloudiness:.1f} %</span></h4>",
-                    unsafe_allow_html=True)
+                    f"<h4 style='text-align: center; margin: 0;'>Current<br><span style='font-size: 20px;'>{current_cloudiness:.1f} %</span></h4>",
+                    unsafe_allow_html=True
+                )
             with col_sidebar_b:
                 st.markdown(
-                    f"<h4 style='text-align: center;'>Next 3-Days:<br><span style='font-size: 18px;'>{three_day_forecast_avg:.1f} %</span></h4>",
-                    unsafe_allow_html=True)
+                    f"<h4 style='text-align: center; margin: 0;'>Next 3-Days<br><span style='font-size: 20px;'>{three_day_forecast_avg:.1f} %</span></h4>",
+                    unsafe_allow_html=True
+                )
 
             # Separator for Daylight Information
-            st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)  # Reduced margin
+            st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)
 
-            # Center Daylight Information
-            st.markdown("<h3 style='text-align: center;'>Daylight Information</h3>", unsafe_allow_html=True)
+            # Daylight Information
+            st.markdown("<h3 style='text-align: center; margin: 0;'>Daylight Information</h3>", unsafe_allow_html=True)
 
             # Using columns for Sunrise and Sunset metrics
             col_sidebar_c, col_sidebar_d = st.columns(2)
             with col_sidebar_c:
                 st.markdown(
-                    f"<h4 style='text-align: center;'>Sunrise Time:<br><span style='font-size: 18px;'>{current_sunrise.strftime('%H:%M')}</span></h4>",
-                    unsafe_allow_html=True)
+                    f"<h4 style='text-align: center; margin: 0;'>Sunrise Time<br><span style='font-size: 20px;'>{current_sunrise.strftime('%H:%M')}</span></h4>",
+                    unsafe_allow_html=True
+                )
             with col_sidebar_d:
                 st.markdown(
-                    f"<h4 style='text-align: center;'>Sunset Time:<br><span style='font-size: 18px;'>{current_sunset.strftime('%H:%M')}</span></h4>",
-                    unsafe_allow_html=True)
+                    f"<h4 style='text-align: center; margin: 0;'>Sunset Time<br><span style='font-size: 20px;'>{current_sunset.strftime('%H:%M')}</span></h4>",
+                    unsafe_allow_html=True
+                )
+
+            # Remaining Sunlight
             st.markdown(
-                "<h4 style='text-align: center;'><a href='https://openweathermap.org/city/263824' target='_blank' style='text-decoration: none;'>Weather Forecast Agios Nikolaos</a></h4>",
-                unsafe_allow_html=True)
+                f"<h4 style='text-align: center; margin: 0;'>Remaining Sunlight<br><span style='font-size: 20px;'>{sunlight_remaining} %</span></h4>",
+                unsafe_allow_html=True
+            )
+
+            # Weather Forecast Link
+            st.markdown(
+                "<h4 style='text-align: center;margin: 0;'><a href='https://openweathermap.org/city/263824' target='_blank' style='text-decoration: none;'>Weather Forecast Agios Nikolaos</a></h4>",
+                unsafe_allow_html=True
+            )
 
         # plot historical temperature data
         time_range = st.selectbox("Select Time Range", ['Past Week', 'Past 3 Days', 'Past Day'])
