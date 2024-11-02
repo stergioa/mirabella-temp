@@ -122,7 +122,7 @@ def calculate_sunlight_remaining(sunrise, sunset):
     else:
         total_duration = (sunset - sunrise).total_seconds()
         elapsed_duration = (now - sunrise).total_seconds()
-        return max(0, min(100, 100 * (total_duration - elapsed_duration) / total_duration))
+        return max(0, min(100, round(100 * (total_duration - elapsed_duration) / total_duration), 2))
 
 
 def main():
