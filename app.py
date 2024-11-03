@@ -55,7 +55,7 @@ def check_temperature_alarms(df):
 
 
 # plot temperature data with dynamic width and annotations
-def plot_temperatures(df):
+def plot_temperatures(df, time_range):
     if not df.empty:
         # Define layout properties with centering for legends
         common_layout = dict(
@@ -125,36 +125,49 @@ def plot_temperatures(df):
             **common_layout
         )
 
+        # Adjust time shift based on the selected time range
+        def get_time_shift(time_range):
+            if time_range == 'Past Week':
+                return pd.Timedelta(minutes=500)
+            elif time_range == 'Past 3 Days':
+                return pd.Timedelta(minutes=300)
+            elif time_range == 'Past Day':
+                return pd.Timedelta(minutes=100)
+            return pd.Timedelta(minutes=0)  # Default shift
+
+        # Get the time shift for the current time range
+        time_shift = get_time_shift(time_range)
+
         # Adjusted annotations to position them to the right of the plot
         fig1.add_annotation(
-            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=500),  # Shift to the right
+            x=df['timestamp'].iloc[-1] + time_shift,
             y=latest_temps['Rooms 11-12'],
             text=f"{latest_temps['Rooms 11-12']:.1f} °C", showarrow=False, font=dict(color='red')
         )
         fig1.add_annotation(
-            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=500),  # Shift to the right
+            x=df['timestamp'].iloc[-1] + time_shift,
             y=latest_temps['Rooms 13-14'],
             text=f"{latest_temps['Rooms 13-14']:.1f} °C", showarrow=False, font=dict(color='blue')
         )
 
         fig2.add_annotation(
-            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=500),  # Shift to the right
+            x=df['timestamp'].iloc[-1] + time_shift,
             y=latest_temps['Rooms 15-16'],
             text=f"{latest_temps['Rooms 15-16']:.1f} °C", showarrow=False, font=dict(color='red')
         )
         fig2.add_annotation(
-            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=500),  # Shift to the right
+            x=df['timestamp'].iloc[-1] + time_shift,
             y=latest_temps['Rooms 17-18'],
             text=f"{latest_temps['Rooms 17-18']:.1f} °C", showarrow=False, font=dict(color='blue')
         )
 
         fig3.add_annotation(
-            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=500),  # Shift to the right
+            x=df['timestamp'].iloc[-1] + time_shift,
             y=latest_temps['Rooms 21-23'],
             text=f"{latest_temps['Rooms 21-23']:.1f} °C", showarrow=False, font=dict(color='red')
         )
         fig3.add_annotation(
-            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=500),  # Shift to the right
+            x=df['timestamp'].iloc[-1] + time_shift,
             y=latest_temps['Rooms 24-28'],
             text=f"{latest_temps['Rooms 24-28']:.1f} °C", showarrow=False, font=dict(color='blue')
         )
@@ -305,7 +318,7 @@ def main():
         # plot historical temperature data
         time_range = st.selectbox("Select Time Range", ['Past Week', 'Past 3 Days', 'Past Day'])
         filtered_df = filter_data(df, time_range)
-        plot_temperatures(filtered_df)
+        plot_temperatures(filtered_df, time_range)
 
     else:
         st.error("No weather data available.")
