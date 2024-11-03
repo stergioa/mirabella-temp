@@ -22,7 +22,6 @@ def load_data():
     return pd.DataFrame()
 
 
-
 def filter_data(df, time_range):
     now = datetime.now(ATHENS_TZ)
     if time_range == 'Past Week':
@@ -34,7 +33,28 @@ def filter_data(df, time_range):
     return df
 
 
-# plot temperature data with dynamic width
+# function to check for temperature alarms
+def check_temperature_alarms(df):
+    alarms = []
+    room_pairs = [
+        ('temp_1', 'Rooms 11-12'),
+        ('temp_2', 'Rooms 13-14'),
+        ('temp_3', 'Rooms 15-16'),
+        ('temp_4', 'Rooms 17-18'),
+        ('temp_5', 'Rooms 21-23'),
+        ('temp_6', 'Rooms 24-28')
+    ]
+
+    for temp_column, room_name in room_pairs:
+        if df[temp_column].max() > 100:
+            alarms.append(f"Alarm for {room_name}, temperature exceeds 100°C")
+        if df[temp_column].min() < 20:
+            alarms.append(f"Alarm for {room_name}, temperature falls below 20°C")
+
+    return alarms
+
+
+# plot temperature data with dynamic width and annotations
 def plot_temperatures(df):
     if not df.empty:
         # Define layout properties with centering for legends
@@ -56,16 +76,27 @@ def plot_temperatures(df):
             height=300
         )
 
+        # Get the latest temperatures for annotation
+        latest_temps = {
+            'Rooms 11-12': df['temp_1'].iloc[-1],
+            'Rooms 13-14': df['temp_2'].iloc[-1],
+            'Rooms 15-16': df['temp_3'].iloc[-1],
+            'Rooms 17-18': df['temp_4'].iloc[-1],
+            'Rooms 21-23': df['temp_5'].iloc[-1],
+            'Rooms 24-28': df['temp_6'].iloc[-1]
+        }
+
         # First plot: Rooms 11-12 (Red) & 13-14 (Blue)
         fig1 = go.Figure()
         fig1.add_trace(
             go.Scatter(x=df['timestamp'], y=df['temp_1'], mode='lines', name='Rooms 11-12', line=dict(color='red')))
         fig1.add_trace(
             go.Scatter(x=df['timestamp'], y=df['temp_2'], mode='lines', name='Rooms 13-14', line=dict(color='blue')))
+
         fig1.update_layout(
             xaxis_title="Date",
             yaxis_title="Temperature (°C)",
-            **common_layout  # No 'title' specified
+            **common_layout
         )
 
         # Second plot: Rooms 15-16 (Red) & 17-18 (Blue)
@@ -74,10 +105,11 @@ def plot_temperatures(df):
             go.Scatter(x=df['timestamp'], y=df['temp_3'], mode='lines', name='Rooms 15-16', line=dict(color='red')))
         fig2.add_trace(
             go.Scatter(x=df['timestamp'], y=df['temp_4'], mode='lines', name='Rooms 17-18', line=dict(color='blue')))
+
         fig2.update_layout(
             xaxis_title="Date",
             yaxis_title="Temperature (°C)",
-            **common_layout  # No 'title' specified
+            **common_layout
         )
 
         # Third plot: Rooms 21-23 (Red) & 24-28 (Blue)
@@ -86,17 +118,52 @@ def plot_temperatures(df):
             go.Scatter(x=df['timestamp'], y=df['temp_5'], mode='lines', name='Rooms 21-23', line=dict(color='red')))
         fig3.add_trace(
             go.Scatter(x=df['timestamp'], y=df['temp_6'], mode='lines', name='Rooms 24-28', line=dict(color='blue')))
+
         fig3.update_layout(
             xaxis_title="Date",
             yaxis_title="Temperature (°C)",
-            **common_layout  # No 'title' specified
+            **common_layout
+        )
+
+        # Adjusted annotations to position them to the right of the plot
+        fig1.add_annotation(
+            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=20),  # Shift to the right
+            y=latest_temps['Rooms 11-12'],
+            text=f"{latest_temps['Rooms 11-12']:.1f} °C", showarrow=False, font=dict(color='red')
+        )
+        fig1.add_annotation(
+            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=20),  # Shift to the right
+            y=latest_temps['Rooms 13-14'],
+            text=f"{latest_temps['Rooms 13-14']:.1f} °C", showarrow=False, font=dict(color='blue')
+        )
+
+        fig2.add_annotation(
+            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=20),  # Shift to the right
+            y=latest_temps['Rooms 15-16'],
+            text=f"{latest_temps['Rooms 15-16']:.1f} °C", showarrow=False, font=dict(color='red')
+        )
+        fig2.add_annotation(
+            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=20),  # Shift to the right
+            y=latest_temps['Rooms 17-18'],
+            text=f"{latest_temps['Rooms 17-18']:.1f} °C", showarrow=False, font=dict(color='blue')
+        )
+
+        fig3.add_annotation(
+            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=20),  # Shift to the right
+            y=latest_temps['Rooms 21-23'],
+            text=f"{latest_temps['Rooms 21-23']:.1f} °C", showarrow=False, font=dict(color='red')
+        )
+        fig3.add_annotation(
+            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=20),  # Shift to the right
+            y=latest_temps['Rooms 24-28'],
+            text=f"{latest_temps['Rooms 24-28']:.1f} °C", showarrow=False, font=dict(color='blue')
         )
 
         # Plotly chart configuration to hide toolbar and disable zoom on mobile
         config = {
             'displayModeBar': False,  # Disable the toolbar
             'scrollZoom': False,      # Disable zoom on scroll or pinch on mobile
-            'staticPlot': False,       # Completely disable all interactions
+            'staticPlot': False,      # Completely disable all interactions
             'responsive': True        # Make charts responsive to screen size
         }
 
@@ -112,6 +179,7 @@ def plot_temperatures(df):
     else:
         st.write("No data available.")
 
+
 # function that calculated remaining sunlight in a day
 def calculate_sunlight_remaining(sunrise, sunset):
     now = datetime.now(ATHENS_TZ)
@@ -122,7 +190,7 @@ def calculate_sunlight_remaining(sunrise, sunset):
     else:
         total_duration = (sunset - sunrise).total_seconds()
         elapsed_duration = (now - sunrise).total_seconds()
-        return round(max(0, min(100, 100 * (total_duration - elapsed_duration) / total_duration)),2)
+        return round(max(0, min(100, 100 * (total_duration - elapsed_duration) / total_duration)), 2)
 
 
 def main():
@@ -156,7 +224,7 @@ def main():
 
     # display weather data if available
     if not df.empty:
-        latest_data = df.iloc[-1] # most recent data
+        latest_data = df.iloc[-1]  # most recent data
         current_temp = latest_data['current_temp']
         current_humidity = latest_data['current_humidity']
         current_cloudiness = latest_data['current_cloudiness']
@@ -227,6 +295,13 @@ def main():
                 unsafe_allow_html=True
             )
 
+        # Check for temperature alarms
+        alarms = check_temperature_alarms(df)
+        if alarms:
+            st.error("Alarms Detected:")
+            for alarm in alarms:
+                st.write(alarm)
+
         # plot historical temperature data
         time_range = st.selectbox("Select Time Range", ['Past Week', 'Past 3 Days', 'Past Day'])
         filtered_df = filter_data(df, time_range)
@@ -234,6 +309,7 @@ def main():
 
     else:
         st.error("No weather data available.")
+
 
 if __name__ == "__main__":
     main()
