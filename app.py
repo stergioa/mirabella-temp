@@ -10,6 +10,29 @@ CSV_FILE = 'temperature_data.csv'
 # Athens timezone
 ATHENS_TZ = pytz.timezone('Europe/Athens')
 
+# Function to detect if the user is on a mobile device
+def is_mobile():
+    user_agent = st.query_params.get('user_agent', [''])[0]
+    return 'Mobile' in user_agent or 'iPhone' in user_agent or 'Android' in user_agent
+
+
+# Adjust time shift based on the selected time range
+def get_time_shift(time_range):
+    if is_mobile():  # Reduce the shift on mobile
+        if time_range == 'Past Week':
+            return pd.Timedelta(minutes=800)
+        elif time_range == 'Past 3 Days':
+            return pd.Timedelta(minutes=500)
+        elif time_range == 'Past Day':
+            return pd.Timedelta(minutes=160)
+    else:
+        if time_range == 'Past Week':
+            return pd.Timedelta(minutes=500)
+        elif time_range == 'Past 3 Days':
+            return pd.Timedelta(minutes=250)
+        elif time_range == 'Past Day':
+            return pd.Timedelta(minutes=80)
+        return pd.Timedelta(minutes=0)
 
 def load_data():
     # load full dataset
@@ -124,16 +147,6 @@ def plot_temperatures(df, time_range):
             yaxis_title="Temperature (°C)",
             **common_layout
         )
-
-        # Adjust time shift based on the selected time range
-        def get_time_shift(time_range):
-            if time_range == 'Past Week':
-                return pd.Timedelta(minutes=500)
-            elif time_range == 'Past 3 Days':
-                return pd.Timedelta(minutes=300)
-            elif time_range == 'Past Day':
-                return pd.Timedelta(minutes=100)
-            return pd.Timedelta(minutes=0)  # Default shift
 
         # Get the time shift for the current time range
         time_shift = get_time_shift(time_range)
