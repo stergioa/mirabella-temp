@@ -127,34 +127,34 @@ def plot_temperatures(df):
 
         # Adjusted annotations to position them to the right of the plot
         fig1.add_annotation(
-            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=60),  # Shift to the right
+            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=500),  # Shift to the right
             y=latest_temps['Rooms 11-12'],
             text=f"{latest_temps['Rooms 11-12']:.1f} °C", showarrow=False, font=dict(color='red')
         )
         fig1.add_annotation(
-            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=60),  # Shift to the right
+            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=500),  # Shift to the right
             y=latest_temps['Rooms 13-14'],
             text=f"{latest_temps['Rooms 13-14']:.1f} °C", showarrow=False, font=dict(color='blue')
         )
 
         fig2.add_annotation(
-            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=60),  # Shift to the right
+            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=500),  # Shift to the right
             y=latest_temps['Rooms 15-16'],
             text=f"{latest_temps['Rooms 15-16']:.1f} °C", showarrow=False, font=dict(color='red')
         )
         fig2.add_annotation(
-            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=60),  # Shift to the right
+            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=500),  # Shift to the right
             y=latest_temps['Rooms 17-18'],
             text=f"{latest_temps['Rooms 17-18']:.1f} °C", showarrow=False, font=dict(color='blue')
         )
 
         fig3.add_annotation(
-            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=60),  # Shift to the right
+            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=500),  # Shift to the right
             y=latest_temps['Rooms 21-23'],
             text=f"{latest_temps['Rooms 21-23']:.1f} °C", showarrow=False, font=dict(color='red')
         )
         fig3.add_annotation(
-            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=60),  # Shift to the right
+            x=df['timestamp'].iloc[-1] + pd.Timedelta(minutes=500),  # Shift to the right
             y=latest_temps['Rooms 24-28'],
             text=f"{latest_temps['Rooms 24-28']:.1f} °C", showarrow=False, font=dict(color='blue')
         )
