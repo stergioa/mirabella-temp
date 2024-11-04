@@ -145,8 +145,6 @@ def add_sun_overlay(fig, df):
     # return the updated figure
     return fig
 
-
-
 def plot_correlations(df):
     # Mapping temperature columns to room names
     room_pairs = [
@@ -574,7 +572,7 @@ def main():
         # plot historical temperature data
         col1, col2 = st.columns([3, 1])
         with col1:
-            time_range = st.selectbox("Select Time Range", ['Past Week', 'Past 3 Days', 'Past Day'])
+            time_range = st.selectbox("Select Time Range", ['Past Week', 'Past 3 Days', 'Past Day'], index=1)
         with col2:
             st.write("")  # adds a blank line
             st.write("")
