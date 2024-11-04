@@ -78,13 +78,17 @@ def check_temperature_alarms(df):
     return alarms
 
 def add_sun_overlay(fig, df):
+    # Hardcoded sunrise and sunset times
+    sunrise_time = "06:41"
+    sunset_time = "17:19"
+
     # Extract unique days from the timestamp column
     unique_days = df['timestamp'].dt.date.unique()
 
     for day in unique_days:
-        # Filter for the sunrise and sunset times for the current day
-        sunrise = df[df['timestamp'].dt.date == day]['current_sunrise'].iloc[0]
-        sunset = df[df['timestamp'].dt.date == day]['current_sunset'].iloc[0]
+        # Create datetime objects for sunrise and sunset
+        sunrise = pd.to_datetime(f"{day} {sunrise_time}")
+        sunset = pd.to_datetime(f"{day} {sunset_time}")
 
         # Add the sun overlay line for the current day
         fig.add_shape(
@@ -322,6 +326,68 @@ def calculate_sunlight_remaining(sunrise, sunset):
         elapsed_duration = (now - sunrise).total_seconds()
         return round(max(0, min(100, 100 * (total_duration - elapsed_duration) / total_duration)), 2)
 
+import plotly.graph_objs as go
+import streamlit as st
+
+def plot_correlation_gauges(df):
+    # Define room names and corresponding temperature columns
+    room_pairs = [
+        ('temp_1', 'Rooms 11-12'),
+        ('temp_2', 'Rooms 13-14'),
+        ('temp_3', 'Rooms 15-16'),
+        ('temp_4', 'Rooms 17-18'),
+        ('temp_5', 'Rooms 21-23'),
+        ('temp_6', 'Rooms 24-28')
+    ]
+
+    # Create a selectbox for choosing the correlation type
+    correlation_type = st.selectbox(
+        "Choose Correlation Type:",
+        ["Cloud Coverage", "Exterior Temperature"]
+    )
+
+    # Determine the column to use based on the selection
+    if correlation_type == "Cloud Coverage":
+        correlation_column = 'current_cloudiness'
+    else:
+        correlation_column = 'current_temp'
+
+    # Create a list to store gauge figures
+    gauges = []
+
+    # Calculate correlation for each room and create a gauge figure
+    for temp_col, room_name in room_pairs:
+        correlation = df[temp_col].corr(df[correlation_column])
+
+        # Create a gauge figure
+        gauge = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=correlation,
+            title={'text': f"{room_name} Correlation"},
+            gauge={
+                'axis': {'range': [-1, 1]},
+                'bar': {'color': "darkblue"},
+                'steps': [
+                    {'range': [-1, -0.5], 'color': "red"},
+                    {'range': [-0.5, 0.5], 'color': "lightgray"},
+                    {'range': [0.5, 1], 'color': "green"}
+                ],
+            }
+        ))
+        gauges.append(gauge)
+
+    # Display the gauges in three columns, two per column
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.plotly_chart(gauges[0], use_container_width=True)
+        st.plotly_chart(gauges[1], use_container_width=True)
+    with col2:
+        st.plotly_chart(gauges[2], use_container_width=True)
+        st.plotly_chart(gauges[3], use_container_width=True)
+    with col3:
+        st.plotly_chart(gauges[4], use_container_width=True)
+        st.plotly_chart(gauges[5], use_container_width=True)
+
 
 def main():
     st.set_page_config(page_title="Boiler Temp")
@@ -446,6 +512,7 @@ def main():
         if overkill_mode:
             st.subheader("More Info")
             plot_correlations(filtered_df)
+            plot_correlation_gauges(df)
 
     else:
         st.error("No weather data available.")
