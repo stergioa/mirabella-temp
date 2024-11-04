@@ -6,6 +6,7 @@ import pytz
 import numpy as np
 from statsmodels.tsa.arima.model import ARIMA
 import os
+from plotly.subplots import make_subplots
 
 CSV_FILE = 'temperature_data.csv'
 
@@ -95,10 +96,10 @@ def add_sun_overlay(fig, df):
         fig.add_shape(
             type="line",
             x0=sunrise,
-            y0=0,  # Adjust this y0 value as necessary
+            y0=20,  # Adjust this y0 value as necessary
             x1=sunset,
-            y1=0,  # Adjust this y1 value as necessary
-            line=dict(color="yellow", width=2, dash="dash"),
+            y1=20,  # Adjust this y1 value as necessary
+            line=dict(color="yellow", width=2),
             name="Sunlight"  # Name for legend
         )
 
@@ -264,37 +265,36 @@ def plot_temperatures(df, time_range, overkill_mode, unfiltered_df):
         time_shift = get_time_shift(time_range)
 
         # Add annotations with time shift only if overkill mode is not activated
-        if not overkill_mode:
-            fig1.add_annotation(
-                x=df['timestamp'].iloc[-1] + time_shift,
-                y=df['temp_1'].iloc[-1],
-                text=f"{df['temp_1'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='red')
-            )
-            fig1.add_annotation(
-                x=df['timestamp'].iloc[-1] + time_shift,
-                y=df['temp_2'].iloc[-1],
-                text=f"{df['temp_2'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='blue')
-            )
-            fig2.add_annotation(
-                x=df['timestamp'].iloc[-1] + time_shift,
-                y=df['temp_3'].iloc[-1],
-                text=f"{df['temp_3'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='red')
-            )
-            fig2.add_annotation(
-                x=df['timestamp'].iloc[-1] + time_shift,
-                y=df['temp_4'].iloc[-1],
-                text=f"{df['temp_4'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='blue')
-            )
-            fig3.add_annotation(
-                x=df['timestamp'].iloc[-1] + time_shift,
-                y=df['temp_5'].iloc[-1],
-                text=f"{df['temp_5'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='red')
-            )
-            fig3.add_annotation(
-                x=df['timestamp'].iloc[-1] + time_shift,
-                y=df['temp_6'].iloc[-1],
-                text=f"{df['temp_6'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='blue')
-            )
+        fig1.add_annotation(
+            x=df['timestamp'].iloc[-1] + time_shift,
+            y=df['temp_1'].iloc[-1],
+            text=f"{df['temp_1'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='red')
+        )
+        fig1.add_annotation(
+            x=df['timestamp'].iloc[-1] + time_shift,
+            y=df['temp_2'].iloc[-1],
+            text=f"{df['temp_2'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='blue')
+        )
+        fig2.add_annotation(
+            x=df['timestamp'].iloc[-1] + time_shift,
+            y=df['temp_3'].iloc[-1],
+            text=f"{df['temp_3'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='red')
+        )
+        fig2.add_annotation(
+            x=df['timestamp'].iloc[-1] + time_shift,
+            y=df['temp_4'].iloc[-1],
+            text=f"{df['temp_4'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='blue')
+        )
+        fig3.add_annotation(
+            x=df['timestamp'].iloc[-1] + time_shift,
+            y=df['temp_5'].iloc[-1],
+            text=f"{df['temp_5'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='red')
+        )
+        fig3.add_annotation(
+            x=df['timestamp'].iloc[-1] + time_shift,
+            y=df['temp_6'].iloc[-1],
+            text=f"{df['temp_6'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='blue')
+        )
 
         # if overkill, add sun overlay and forecasted temperatures
         if overkill_mode:
@@ -358,8 +358,6 @@ def calculate_sunlight_remaining(sunrise, sunset):
         elapsed_duration = (now - sunrise).total_seconds()
         return round(max(0, min(100, 100 * (total_duration - elapsed_duration) / total_duration)), 2)
 
-import plotly.graph_objs as go
-import streamlit as st
 
 def plot_correlation_gauges(df):
     # Define room names and corresponding temperature columns
@@ -384,41 +382,49 @@ def plot_correlation_gauges(df):
     else:
         correlation_column = 'current_temp'
 
-    # Create a list to store gauge figures
-    gauges = []
+    # Create a 2x3 grid layout for the gauges with the correct specs for indicators
+    fig = make_subplots(
+        rows=2, cols=3,
+        specs=[[{'type': 'indicator'}, {'type': 'indicator'}, {'type': 'indicator'}],
+               [{'type': 'indicator'}, {'type': 'indicator'}, {'type': 'indicator'}]],
+        vertical_spacing=0.2,  # Adjust spacing between rows to make it more compact
+        horizontal_spacing=0.1  # Adjust spacing between columns
+    )
 
-    # Calculate correlation for each room and create a gauge figure
-    for temp_col, room_name in room_pairs:
+    # Calculate correlation for each room and add to the subplot
+    for idx, (temp_col, room_name) in enumerate(room_pairs):
+        row = idx // 3 + 1  # Calculate row number (1 or 2)
+        col = idx % 3 + 1   # Calculate column number (1, 2, or 3)
         correlation = df[temp_col].corr(df[correlation_column])
 
-        # Create a gauge figure
-        gauge = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=correlation,
-            title={'text': f"{room_name} Correlation"},
-            gauge={
-                'axis': {'range': [-1, 1]},
-                'bar': {'color': "darkblue"},
-                'steps': [
-                    {'range': [-1, -0.5], 'color': "red"},
-                    {'range': [-0.5, 0.5], 'color': "lightgray"},
-                    {'range': [0.5, 1], 'color': "green"}
-                ],
-            }
-        ))
-        gauges.append(gauge)
+        # Add the gauge figure to the subplot
+        fig.add_trace(
+            go.Indicator(
+                mode="gauge+number",
+                value=correlation,
+                title={'text': room_name, 'font': {'size': 12}},  # Smaller font for titles
+                gauge={
+                    'axis': {'range': [-1, 1], 'tickfont': {'size': 10}},  # Smaller font for ticks
+                    'bar': {'color': "darkblue"},
+                    'steps': [
+                        {'range': [-1, -0.5], 'color': "red"},
+                        {'range': [-0.5, 0.5], 'color': "lightgray"},
+                        {'range': [0.5, 1], 'color': "green"}
+                    ],
+                }
+            ),
+            row=row, col=col
+        )
 
-    # Display the gauges in three columns, two per column
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.plotly_chart(gauges[0], use_container_width=True)
-        st.plotly_chart(gauges[1], use_container_width=True)
-    with col2:
-        st.plotly_chart(gauges[2], use_container_width=True)
-        st.plotly_chart(gauges[3], use_container_width=True)
-    with col3:
-        st.plotly_chart(gauges[4], use_container_width=True)
-        st.plotly_chart(gauges[5], use_container_width=True)
+    # Update layout for the entire figure
+    fig.update_layout(
+        height=600,  # Reduce the height for a more compact display
+        title_text="Temperature Correlation Gauges",
+        showlegend=False  # Hide legend if not needed
+    )
+
+    # Display the figure using Streamlit
+    st.plotly_chart(fig, use_container_width=True)
 
 
 def main():
@@ -537,7 +543,8 @@ def main():
             time_range = st.selectbox("Select Time Range", ['Past Week', 'Past 3 Days', 'Past Day'])
         with col2:
             st.write("")  # adds a blank line
-            overkill_mode = st.checkbox("Overkill Mode")
+            st.write("")
+            overkill_mode = st.checkbox("Advanced Mode")
         unfiltered_df = df.copy()
         filtered_df = filter_data(df, time_range)
         plot_temperatures(filtered_df, time_range, overkill_mode, unfiltered_df)
