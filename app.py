@@ -79,47 +79,46 @@ def check_temperature_alarms(df):
 
     return alarms
 
-import pytz
 
 def add_sun_overlay(fig, df):
-    # Hardcoded sunrise and sunset times
+    # hardcoded sunrise and sunset times
     sunrise_time = "06:41"
     sunset_time = "17:19"
 
-    # Define the Athens time zone
+    # define the Athens time zone
     athens_tz = pytz.timezone("Europe/Athens")
 
-    # Get the range of timestamps in the dataframe
-    min_timestamp = df['timestamp'].min()
-    max_timestamp = df['timestamp'].max()
+    # convert the range of timestamps in the dataframe to the Athens time zone
+    min_timestamp = pd.to_datetime(df['timestamp'].min()).tz_convert(athens_tz)
+    max_timestamp = pd.to_datetime(df['timestamp'].max()).tz_convert(athens_tz)
 
-    # Check if the timestamps are timezone-aware
-    if min_timestamp.tzinfo is None or max_timestamp.tzinfo is None:
-        # If timezone-naive, localize to UTC and then convert to Athens time
-        min_timestamp = pd.to_datetime(min_timestamp).tz_localize('UTC').tz_convert(athens_tz)
-        max_timestamp = pd.to_datetime(max_timestamp).tz_localize('UTC').tz_convert(athens_tz)
-    else:
-        # If timezone-aware, directly convert to Athens time
-        min_timestamp = min_timestamp.tz_convert(athens_tz)
-        max_timestamp = max_timestamp.tz_convert(athens_tz)
+    # get unique days from the timestamp column and convert them to Athens time
+    unique_days = pd.to_datetime(df['timestamp']).dt.tz_convert(athens_tz).dt.date.unique()
 
-    # Extract unique days from the timestamp column and convert to Athens time zone
-    if df['timestamp'].dt.tz is None:
-        unique_days = pd.to_datetime(df['timestamp']).dt.tz_localize('UTC').dt.tz_convert(athens_tz).dt.date.unique()
-    else:
-        unique_days = pd.to_datetime(df['timestamp']).dt.tz_convert(athens_tz).dt.date.unique()
-
-    # Determine the minimum and maximum temperature values for the plot
+    # find the min and max temperature values for setting the overlay height
     y_min = df[['temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5', 'temp_6']].min().min()
     y_max = df[['temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5', 'temp_6']].max().max()
 
     for day in unique_days:
-        # Create datetime objects for sunrise and sunset in the Athens time zone
+        # make datetime objects for sunrise and sunset in Athens time
         sunrise = athens_tz.localize(pd.Timestamp(f"{day} {sunrise_time}"))
         sunset = athens_tz.localize(pd.Timestamp(f"{day} {sunset_time}"))
 
-        # Only add the overlay if the sunrise and sunset times fall within the data range
-        if sunrise >= min_timestamp and sunset <= max_timestamp:
+        # filter data for the current day
+        day_data = df[(df['timestamp'] >= sunrise) & (df['timestamp'] <= sunset)]
+
+        if not day_data.empty:
+            # get the first and last timestamp for the current day in the data
+            oldest_timestamp = day_data['timestamp'].min().tz_convert(athens_tz)
+            latest_timestamp = day_data['timestamp'].max().tz_convert(athens_tz)
+
+            # adjust sunrise and sunset times based on the data
+            if oldest_timestamp > sunrise:
+                sunrise = oldest_timestamp  # start the overlay from the first data point
+            if latest_timestamp < sunset:
+                sunset = latest_timestamp  # end the overlay at the last data point
+
+            # add the translucent yellow rectangle for the sun overlay
             fig.add_shape(
                 type="rect",
                 x0=sunrise,
@@ -127,12 +126,12 @@ def add_sun_overlay(fig, df):
                 x1=sunset,
                 y1=y_max,
                 fillcolor="yellow",
-                opacity=0.15,  # Reduced opacity for a subtler effect
+                opacity=0.15,  # keep the overlay subtle
                 line_width=0,
-                layer='below'  # Ensure the overlay is behind the temperature lines
+                layer='below'  # place it behind the temperature lines
             )
 
-    # Add a dummy trace for the legend
+    # add a dummy trace for the legend to indicate sunlight
     fig.add_trace(
         go.Scatter(
             x=[None],
@@ -143,7 +142,7 @@ def add_sun_overlay(fig, df):
         )
     )
 
-    # Return the updated figure
+    # return the updated figure
     return fig
 
 
