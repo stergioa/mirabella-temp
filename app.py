@@ -80,36 +80,41 @@ def check_temperature_alarms(df):
     return alarms
 
 def add_sun_overlay(fig, df):
-    # hardcoded sunrise and sunset times
+    # Hardcoded sunrise and sunset times
     sunrise_time = "06:41"
     sunset_time = "17:19"
 
-    # extract unique days from the timestamp column
+    # Get the range of timestamps in the dataframe
+    min_timestamp = df['timestamp'].min()
+    max_timestamp = df['timestamp'].max()
+
+    # Extract unique days from the timestamp column
     unique_days = df['timestamp'].dt.date.unique()
 
-    # determine the minimum and maximum temperature values for the plot
+    # Determine the minimum and maximum temperature values for the plot
     y_min = df[['temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5', 'temp_6']].min().min()
     y_max = df[['temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5', 'temp_6']].max().max()
 
     for day in unique_days:
-        # create datetime objects for sunrise and sunset
+        # Create datetime objects for sunrise and sunset
         sunrise = pd.to_datetime(f"{day} {sunrise_time}")
         sunset = pd.to_datetime(f"{day} {sunset_time}")
 
-        # add a yellow translucent rectangle for the sun overlay
-        fig.add_shape(
-            type="rect",
-            x0=sunrise,
-            y0=y_min,
-            x1=sunset,
-            y1=y_max,
-            fillcolor="yellow",
-            opacity=0.15,  # reduced opacity for a subtler effect
-            line_width=0,
-            layer='below'  # ensure the overlay is behind the temperature lines
-        )
+        # Only add the overlay if the sunrise and sunset times fall within the data range
+        if sunrise >= min_timestamp and sunset <= max_timestamp:
+            fig.add_shape(
+                type="rect",
+                x0=sunrise,
+                y0=y_min,
+                x1=sunset,
+                y1=y_max,
+                fillcolor="yellow",
+                opacity=0.15,  # Reduced opacity for a subtler effect
+                line_width=0,
+                layer='below'  # Ensure the overlay is behind the temperature lines
+            )
 
-    # add a dummy trace for the legend
+    # Add a dummy trace for the legend
     fig.add_trace(
         go.Scatter(
             x=[None],
@@ -120,9 +125,8 @@ def add_sun_overlay(fig, df):
         )
     )
 
-    # return the updated figure
+    # Return the updated figure
     return fig
-
 
 
 def plot_correlations(df):
