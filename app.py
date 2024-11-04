@@ -80,41 +80,49 @@ def check_temperature_alarms(df):
     return alarms
 
 def add_sun_overlay(fig, df):
-    # Hardcoded sunrise and sunset times
+    # hardcoded sunrise and sunset times
     sunrise_time = "06:41"
     sunset_time = "17:19"
 
-    # Extract unique days from the timestamp column
+    # extract unique days from the timestamp column
     unique_days = df['timestamp'].dt.date.unique()
 
+    # determine the minimum and maximum temperature values for the plot
+    y_min = df[['temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5', 'temp_6']].min().min()
+    y_max = df[['temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5', 'temp_6']].max().max()
+
     for day in unique_days:
-        # Create datetime objects for sunrise and sunset
+        # create datetime objects for sunrise and sunset
         sunrise = pd.to_datetime(f"{day} {sunrise_time}")
         sunset = pd.to_datetime(f"{day} {sunset_time}")
 
-        # Add the sun overlay line for the current day
+        # add a yellow translucent rectangle for the sun overlay
         fig.add_shape(
-            type="line",
+            type="rect",
             x0=sunrise,
-            y0=20,  # Adjust this y0 value as necessary
+            y0=y_min,
             x1=sunset,
-            y1=20,  # Adjust this y1 value as necessary
-            line=dict(color="yellow", width=2),
-            name="Sunlight"  # Name for legend
+            y1=y_max,
+            fillcolor="yellow",
+            opacity=0.15,  # reduced opacity for a subtler effect
+            line_width=0,
+            layer='below'  # ensure the overlay is behind the temperature lines
         )
 
-    # Add a dummy trace for the legend
+    # add a dummy trace for the legend
     fig.add_trace(
         go.Scatter(
             x=[None],
             y=[None],
-            mode='lines',
-            line=dict(color="yellow", width=2, dash="dash"),
+            mode='markers',
+            marker=dict(size=10, color="yellow", opacity=0.15),
             name="Sunlight"
         )
     )
 
+    # return the updated figure
     return fig
+
 
 
 def plot_correlations(df):
@@ -360,71 +368,60 @@ def calculate_sunlight_remaining(sunrise, sunset):
 
 
 def plot_correlation_gauges(df):
-    # Define room names and corresponding temperature columns
+    # Define room names and corresponding temperature columns in groups of two
     room_pairs = [
-        ('temp_1', 'Rooms 11-12'),
-        ('temp_2', 'Rooms 13-14'),
-        ('temp_3', 'Rooms 15-16'),
-        ('temp_4', 'Rooms 17-18'),
-        ('temp_5', 'Rooms 21-23'),
-        ('temp_6', 'Rooms 24-28')
+        [('temp_1', 'Rooms 11-12'), ('temp_2', 'Rooms 13-14')],
+        [('temp_3', 'Rooms 15-16'), ('temp_4', 'Rooms 17-18')],
+        [('temp_5', 'Rooms 21-23'), ('temp_6', 'Rooms 24-28')]
     ]
 
+    st.subheader("Correlation Gauges")
     # Create a selectbox for choosing the correlation type
     correlation_type = st.selectbox(
-        "Choose Correlation Type:",
-        ["Cloud Coverage", "Exterior Temperature"]
+        "label",
+        ["Boiler Temp. vs Cloud Coverage", "Boiler Temp. vs Exterior Temperature"],
+        label_visibility="collapsed"
     )
 
     # Determine the column to use based on the selection
-    if correlation_type == "Cloud Coverage":
-        correlation_column = 'current_cloudiness'
-    else:
-        correlation_column = 'current_temp'
-
-    # Create a 2x3 grid layout for the gauges with the correct specs for indicators
-    fig = make_subplots(
-        rows=2, cols=3,
-        specs=[[{'type': 'indicator'}, {'type': 'indicator'}, {'type': 'indicator'}],
-               [{'type': 'indicator'}, {'type': 'indicator'}, {'type': 'indicator'}]],
-        vertical_spacing=0.2,  # Adjust spacing between rows to make it more compact
-        horizontal_spacing=0.1  # Adjust spacing between columns
+    correlation_column = (
+        'current_cloudiness' if correlation_type == "Boiler Temp. vs Cloud Coverage" else 'current_temp'
     )
 
-    # Calculate correlation for each room and add to the subplot
-    for idx, (temp_col, room_name) in enumerate(room_pairs):
-        row = idx // 3 + 1  # Calculate row number (1 or 2)
-        col = idx % 3 + 1   # Calculate column number (1, 2, or 3)
-        correlation = df[temp_col].corr(df[correlation_column])
+    # Create tabs to choose room groups
+    tabs = st.tabs(["Rooms 11-14", "Rooms 15-18", "Rooms 21-28"])
 
-        # Add the gauge figure to the subplot
-        fig.add_trace(
-            go.Indicator(
-                mode="gauge+number",
-                value=correlation,
-                title={'text': room_name, 'font': {'size': 12}},  # Smaller font for titles
-                gauge={
-                    'axis': {'range': [-1, 1], 'tickfont': {'size': 10}},  # Smaller font for ticks
-                    'bar': {'color': "darkblue"},
-                    'steps': [
-                        {'range': [-1, -0.5], 'color': "red"},
-                        {'range': [-0.5, 0.5], 'color': "lightgray"},
-                        {'range': [0.5, 1], 'color': "green"}
-                    ],
-                }
-            ),
-            row=row, col=col
-        )
-
-    # Update layout for the entire figure
-    fig.update_layout(
-        height=600,  # Reduce the height for a more compact display
-        title_text="Temperature Correlation Gauges",
-        showlegend=False  # Hide legend if not needed
-    )
-
-    # Display the figure using Streamlit
-    st.plotly_chart(fig, use_container_width=True)
+    for tab, pairs in zip(tabs, room_pairs):
+        with tab:
+            # Create a 1x2 layout for the gauges
+            fig = make_subplots(
+                rows=1, cols=2,
+                specs=[[{'type': 'indicator'}, {'type': 'indicator'}]],
+                horizontal_spacing=0.2
+            )
+            # Add gauges to the figure
+            for idx, (temp_col, room_name) in enumerate(pairs):
+                correlation = df[temp_col].corr(df[correlation_column])
+                fig.add_trace(
+                    go.Indicator(
+                        mode="gauge+number",
+                        value=correlation,
+                        title={'text': room_name, 'font': {'size': 20}},
+                        gauge={
+                            'axis': {'range': [-1, 1], 'tickfont': {'size': 15}},
+                            'bar': {'thickness': 0},
+                            'threshold': {
+                                'line': {'color': "green", 'width': 2},
+                                'thickness': 0.9,
+                                'value': correlation
+                            },
+                        },
+                    ),
+                    row=1, col=idx + 1
+                )
+            # Update layout and display the figure
+            fig.update_layout(height=300, width=700, showlegend=False)
+            st.plotly_chart(fig, use_container_width=True)
 
 
 def main():
@@ -544,7 +541,7 @@ def main():
         with col2:
             st.write("")  # adds a blank line
             st.write("")
-            overkill_mode = st.checkbox("Advanced Mode")
+            overkill_mode = st.checkbox("Advanced Mode", value=True)
         unfiltered_df = df.copy()
         filtered_df = filter_data(df, time_range)
         plot_temperatures(filtered_df, time_range, overkill_mode, unfiltered_df)
