@@ -84,21 +84,24 @@ def add_sun_overlay(fig, df):
     sunrise_time = "06:41"
     sunset_time = "17:19"
 
-    # Get the range of timestamps in the dataframe
-    min_timestamp = df['timestamp'].min()
-    max_timestamp = df['timestamp'].max()
+    # Define the Athens time zone
+    athens_tz = pytz.timezone("Europe/Athens")
 
-    # Extract unique days from the timestamp column
-    unique_days = df['timestamp'].dt.date.unique()
+    # Convert the range of timestamps in the dataframe to Athens time zone
+    min_timestamp = pd.to_datetime(df['timestamp'].min()).tz_localize('UTC').tz_convert(athens_tz)
+    max_timestamp = pd.to_datetime(df['timestamp'].max()).tz_localize('UTC').tz_convert(athens_tz)
+
+    # Extract unique days from the timestamp column and convert to Athens time zone
+    unique_days = pd.to_datetime(df['timestamp']).dt.tz_localize('UTC').dt.tz_convert(athens_tz).dt.date.unique()
 
     # Determine the minimum and maximum temperature values for the plot
     y_min = df[['temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5', 'temp_6']].min().min()
     y_max = df[['temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5', 'temp_6']].max().max()
 
     for day in unique_days:
-        # Create datetime objects for sunrise and sunset
-        sunrise = pd.to_datetime(f"{day} {sunrise_time}")
-        sunset = pd.to_datetime(f"{day} {sunset_time}")
+        # Create datetime objects for sunrise and sunset in the Athens time zone
+        sunrise = athens_tz.localize(pd.to_datetime(f"{day} {sunrise_time}"))
+        sunset = athens_tz.localize(pd.to_datetime(f"{day} {sunset_time}"))
 
         # Only add the overlay if the sunrise and sunset times fall within the data range
         if sunrise >= min_timestamp and sunset <= max_timestamp:
