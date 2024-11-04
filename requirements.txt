@@ -46,3 +46,4 @@ urllib3==2.2.3
 watchdog==5.0.3
 Werkzeug==3.0.4
 statsmodels
+numpy

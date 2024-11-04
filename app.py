@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import plotly.graph_objs as go
 import pytz
+import numpy as np
 from statsmodels.tsa.arima.model import ARIMA
 import os
 
@@ -149,14 +150,24 @@ def plot_correlations(df):
 
 
 
-def forecast_temperature_series(series, periods=3):
-    # Fit an ARIMA model to the series
-    model = ARIMA(series, order=(5, 1, 0))  # (p, d, q) parameters can be tuned
-    model_fit = model.fit()
-    forecast = model_fit.forecast(steps=periods)
+def forecast_temperature_series_with_average_seasonality(series, periods=288):
+    # Calculate the number of data points per day (assuming 300-second intervals, there are 288 points in a day)
+    points_per_day = periods
+
+    # Check if there is enough data for 5 days
+    if len(series) < points_per_day * 5:
+        raise ValueError("Not enough data to calculate a 5-day average seasonality forecast.")
+
+    # Get the last 5 days' data
+    recent_5_days_data = [series.iloc[-(i + 1) * points_per_day: -i * points_per_day].values for i in range(5)]
+
+    # Calculate the average for each time point across the 5 days
+    forecast = np.mean(recent_5_days_data, axis=0)
+
     return forecast
 
-def plot_temperatures(df, time_range, overkill_mode):
+
+def plot_temperatures(df, time_range, overkill_mode, unfiltered_df):
     if not df.empty:
         # Define layout properties with centering for legends
         common_layout = dict(
@@ -178,14 +189,19 @@ def plot_temperatures(df, time_range, overkill_mode):
         )
 
         # Forecast temperature for each room using ARIMA
-        forecast_times = pd.date_range(start=df['timestamp'].iloc[-1], periods=4, freq='D')[1:]
+        forecast_times = pd.date_range(
+            start=df['timestamp'].iloc[-1] + pd.Timedelta(seconds=300),
+            periods=288,
+            freq='300S'
+        )
+        # Forecast temperature for each room using the simplified linear approach
         forecasted_temps = {
-            'Rooms 11-12': forecast_temperature_series(df['temp_1']).values,
-            'Rooms 13-14': forecast_temperature_series(df['temp_2']).values,
-            'Rooms 15-16': forecast_temperature_series(df['temp_3']).values,
-            'Rooms 17-18': forecast_temperature_series(df['temp_4']).values,
-            'Rooms 21-23': forecast_temperature_series(df['temp_5']).values,
-            'Rooms 24-28': forecast_temperature_series(df['temp_6']).values
+            'Rooms 11-12': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_1']),
+            'Rooms 13-14': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_2']),
+            'Rooms 15-16': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_3']),
+            'Rooms 17-18': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_4']),
+            'Rooms 21-23': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_5']),
+            'Rooms 24-28': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_6'])
         }
 
         # Create figures for each room pair
@@ -506,9 +522,9 @@ def main():
         with col2:
             st.write("")  # adds a blank line
             overkill_mode = st.checkbox("Overkill Mode")
-
+        unfiltered_df = df.copy()
         filtered_df = filter_data(df, time_range)
-        plot_temperatures(filtered_df, time_range, overkill_mode)
+        plot_temperatures(filtered_df, time_range, overkill_mode, unfiltered_df)
         if overkill_mode:
             st.subheader("More Info")
             plot_correlations(filtered_df)
