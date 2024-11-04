@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import plotly.graph_objs as go
 import pytz
+from statsmodels.tsa.arima.model import ARIMA
 import os
 
 CSV_FILE = 'temperature_data.csv'
@@ -10,13 +11,13 @@ CSV_FILE = 'temperature_data.csv'
 # Athens timezone
 ATHENS_TZ = pytz.timezone('Europe/Athens')
 
-# Function to detect if the user is on a mobile device
+# detect if user is on a mobile device
 def is_mobile():
     user_agent = st.query_params.get('user_agent', [''])[0]
     return 'Mobile' in user_agent or 'iPhone' in user_agent or 'Android' in user_agent
 
 
-# Adjust time shift based on the selected time range
+# adjust time shift based on the selected time range and device
 def get_time_shift(time_range):
     if is_mobile():  # Reduce the shift on mobile
         if time_range == 'Past Week':
@@ -76,9 +77,82 @@ def check_temperature_alarms(df):
 
     return alarms
 
+def add_sun_overlay(fig, df):
+    # Extract unique days from the timestamp column
+    unique_days = df['timestamp'].dt.date.unique()
 
-# plot temperature data with dynamic width and annotations
-def plot_temperatures(df, time_range):
+    for day in unique_days:
+        # Filter for the sunrise and sunset times for the current day
+        sunrise = df[df['timestamp'].dt.date == day]['current_sunrise'].iloc[0]
+        sunset = df[df['timestamp'].dt.date == day]['current_sunset'].iloc[0]
+
+        # Add the sun overlay line for the current day
+        fig.add_shape(
+            type="line",
+            x0=sunrise,
+            y0=0,  # Adjust this y0 value as necessary
+            x1=sunset,
+            y1=0,  # Adjust this y1 value as necessary
+            line=dict(color="yellow", width=2, dash="dash"),
+            name="Sunlight"  # Name for legend
+        )
+
+    # Add a dummy trace for the legend
+    fig.add_trace(
+        go.Scatter(
+            x=[None],
+            y=[None],
+            mode='lines',
+            line=dict(color="yellow", width=2, dash="dash"),
+            name="Sunlight"
+        )
+    )
+
+    return fig
+
+
+def plot_correlations(df):
+    # Mapping temperature columns to room names
+    room_pairs = [
+        ('temp_1', 'Rooms 11-12'),
+        ('temp_2', 'Rooms 13-14'),
+        ('temp_3', 'Rooms 15-16'),
+        ('temp_4', 'Rooms 17-18'),
+        ('temp_5', 'Rooms 21-23'),
+        ('temp_6', 'Rooms 24-28')
+    ]
+
+    # Create a dictionary to map temp columns to room names
+    temp_to_room_map = {temp: room for temp, room in room_pairs}
+
+    # Correlation matrix for all boiler temperatures
+    corr_matrix = df[['temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5', 'temp_6']].corr()
+
+    # Rename the index and columns of the correlation matrix using the room names
+    corr_matrix.rename(index=temp_to_room_map, columns=temp_to_room_map, inplace=True)
+
+    # Create the heatmap
+    fig_corr_matrix = go.Figure(data=go.Heatmap(
+        z=corr_matrix.values,
+        x=corr_matrix.columns,
+        y=corr_matrix.index,
+        colorscale='Viridis'
+    ))
+    fig_corr_matrix.update_layout(title="Boiler Temperature Correlation Matrix")
+
+    # Display the heatmap
+    st.plotly_chart(fig_corr_matrix, use_container_width=True)
+
+
+
+def forecast_temperature_series(series, periods=3):
+    # Fit an ARIMA model to the series
+    model = ARIMA(series, order=(5, 1, 0))  # (p, d, q) parameters can be tuned
+    model_fit = model.fit()
+    forecast = model_fit.forecast(steps=periods)
+    return forecast
+
+def plot_temperatures(df, time_range, overkill_mode):
     if not df.empty:
         # Define layout properties with centering for legends
         common_layout = dict(
@@ -99,49 +173,51 @@ def plot_temperatures(df, time_range):
             height=300
         )
 
-        # Get the latest temperatures for annotation
-        latest_temps = {
-            'Rooms 11-12': df['temp_1'].iloc[-1],
-            'Rooms 13-14': df['temp_2'].iloc[-1],
-            'Rooms 15-16': df['temp_3'].iloc[-1],
-            'Rooms 17-18': df['temp_4'].iloc[-1],
-            'Rooms 21-23': df['temp_5'].iloc[-1],
-            'Rooms 24-28': df['temp_6'].iloc[-1]
+        # Forecast temperature for each room using ARIMA
+        forecast_times = pd.date_range(start=df['timestamp'].iloc[-1], periods=4, freq='D')[1:]
+        forecasted_temps = {
+            'Rooms 11-12': forecast_temperature_series(df['temp_1']).values,
+            'Rooms 13-14': forecast_temperature_series(df['temp_2']).values,
+            'Rooms 15-16': forecast_temperature_series(df['temp_3']).values,
+            'Rooms 17-18': forecast_temperature_series(df['temp_4']).values,
+            'Rooms 21-23': forecast_temperature_series(df['temp_5']).values,
+            'Rooms 24-28': forecast_temperature_series(df['temp_6']).values
         }
 
-        # First plot: Rooms 11-12 (Red) & 13-14 (Blue)
+        # Create figures for each room pair
         fig1 = go.Figure()
         fig1.add_trace(
-            go.Scatter(x=df['timestamp'], y=df['temp_1'], mode='lines', name='Rooms 11-12', line=dict(color='red')))
+            go.Scatter(x=df['timestamp'], y=df['temp_1'], mode='lines', name='Rooms 11-12', line=dict(color='red'))
+        )
         fig1.add_trace(
-            go.Scatter(x=df['timestamp'], y=df['temp_2'], mode='lines', name='Rooms 13-14', line=dict(color='blue')))
-
+            go.Scatter(x=df['timestamp'], y=df['temp_2'], mode='lines', name='Rooms 13-14', line=dict(color='blue'))
+        )
         fig1.update_layout(
             xaxis_title="Date",
             yaxis_title="Temperature (°C)",
             **common_layout
         )
 
-        # Second plot: Rooms 15-16 (Red) & 17-18 (Blue)
         fig2 = go.Figure()
         fig2.add_trace(
-            go.Scatter(x=df['timestamp'], y=df['temp_3'], mode='lines', name='Rooms 15-16', line=dict(color='red')))
+            go.Scatter(x=df['timestamp'], y=df['temp_3'], mode='lines', name='Rooms 15-16', line=dict(color='red'))
+        )
         fig2.add_trace(
-            go.Scatter(x=df['timestamp'], y=df['temp_4'], mode='lines', name='Rooms 17-18', line=dict(color='blue')))
-
+            go.Scatter(x=df['timestamp'], y=df['temp_4'], mode='lines', name='Rooms 17-18', line=dict(color='blue'))
+        )
         fig2.update_layout(
             xaxis_title="Date",
             yaxis_title="Temperature (°C)",
             **common_layout
         )
 
-        # Third plot: Rooms 21-23 (Red) & 24-28 (Blue)
         fig3 = go.Figure()
         fig3.add_trace(
-            go.Scatter(x=df['timestamp'], y=df['temp_5'], mode='lines', name='Rooms 21-23', line=dict(color='red')))
+            go.Scatter(x=df['timestamp'], y=df['temp_5'], mode='lines', name='Rooms 21-23', line=dict(color='red'))
+        )
         fig3.add_trace(
-            go.Scatter(x=df['timestamp'], y=df['temp_6'], mode='lines', name='Rooms 24-28', line=dict(color='blue')))
-
+            go.Scatter(x=df['timestamp'], y=df['temp_6'], mode='lines', name='Rooms 24-28', line=dict(color='blue'))
+        )
         fig3.update_layout(
             xaxis_title="Date",
             yaxis_title="Temperature (°C)",
@@ -151,39 +227,67 @@ def plot_temperatures(df, time_range):
         # Get the time shift for the current time range
         time_shift = get_time_shift(time_range)
 
-        # Adjusted annotations to position them to the right of the plot
-        fig1.add_annotation(
-            x=df['timestamp'].iloc[-1] + time_shift,
-            y=latest_temps['Rooms 11-12'],
-            text=f"{latest_temps['Rooms 11-12']:.1f} °C", showarrow=False, font=dict(color='red')
-        )
-        fig1.add_annotation(
-            x=df['timestamp'].iloc[-1] + time_shift,
-            y=latest_temps['Rooms 13-14'],
-            text=f"{latest_temps['Rooms 13-14']:.1f} °C", showarrow=False, font=dict(color='blue')
-        )
+        # Add annotations with time shift only if overkill mode is not activated
+        if not overkill_mode:
+            fig1.add_annotation(
+                x=df['timestamp'].iloc[-1] + time_shift,
+                y=df['temp_1'].iloc[-1],
+                text=f"{df['temp_1'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='red')
+            )
+            fig1.add_annotation(
+                x=df['timestamp'].iloc[-1] + time_shift,
+                y=df['temp_2'].iloc[-1],
+                text=f"{df['temp_2'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='blue')
+            )
+            fig2.add_annotation(
+                x=df['timestamp'].iloc[-1] + time_shift,
+                y=df['temp_3'].iloc[-1],
+                text=f"{df['temp_3'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='red')
+            )
+            fig2.add_annotation(
+                x=df['timestamp'].iloc[-1] + time_shift,
+                y=df['temp_4'].iloc[-1],
+                text=f"{df['temp_4'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='blue')
+            )
+            fig3.add_annotation(
+                x=df['timestamp'].iloc[-1] + time_shift,
+                y=df['temp_5'].iloc[-1],
+                text=f"{df['temp_5'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='red')
+            )
+            fig3.add_annotation(
+                x=df['timestamp'].iloc[-1] + time_shift,
+                y=df['temp_6'].iloc[-1],
+                text=f"{df['temp_6'].iloc[-1]:.1f} °C", showarrow=False, font=dict(color='blue')
+            )
 
-        fig2.add_annotation(
-            x=df['timestamp'].iloc[-1] + time_shift,
-            y=latest_temps['Rooms 15-16'],
-            text=f"{latest_temps['Rooms 15-16']:.1f} °C", showarrow=False, font=dict(color='red')
-        )
-        fig2.add_annotation(
-            x=df['timestamp'].iloc[-1] + time_shift,
-            y=latest_temps['Rooms 17-18'],
-            text=f"{latest_temps['Rooms 17-18']:.1f} °C", showarrow=False, font=dict(color='blue')
-        )
-
-        fig3.add_annotation(
-            x=df['timestamp'].iloc[-1] + time_shift,
-            y=latest_temps['Rooms 21-23'],
-            text=f"{latest_temps['Rooms 21-23']:.1f} °C", showarrow=False, font=dict(color='red')
-        )
-        fig3.add_annotation(
-            x=df['timestamp'].iloc[-1] + time_shift,
-            y=latest_temps['Rooms 24-28'],
-            text=f"{latest_temps['Rooms 24-28']:.1f} °C", showarrow=False, font=dict(color='blue')
-        )
+        # if overkill, add sun overlay and forecasted temperatures
+        if overkill_mode:
+            for fig in [fig1, fig2, fig3]:
+                fig = add_sun_overlay(fig, df)
+            fig1.add_trace(
+                go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 11-12'],
+                           mode='lines', name='Forecast Rooms 11-12', line=dict(color='red', dash='dash'))
+            )
+            fig1.add_trace(
+                go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 13-14'],
+                           mode='lines', name='Forecast Rooms 13-14', line=dict(color='blue', dash='dash'))
+            )
+            fig2.add_trace(
+                go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 15-16'],
+                           mode='lines', name='Forecast Rooms 15-16', line=dict(color='red', dash='dash'))
+            )
+            fig2.add_trace(
+                go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 17-18'],
+                           mode='lines', name='Forecast Rooms 17-18', line=dict(color='blue', dash='dash'))
+            )
+            fig3.add_trace(
+                go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 21-23'],
+                           mode='lines', name='Forecast Rooms 21-23', line=dict(color='red', dash='dash'))
+            )
+            fig3.add_trace(
+                go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 24-28'],
+                           mode='lines', name='Forecast Rooms 24-28', line=dict(color='blue', dash='dash'))
+            )
 
         # Plotly chart configuration to hide toolbar and disable zoom on mobile
         config = {
@@ -193,7 +297,7 @@ def plot_temperatures(df, time_range):
             'responsive': True        # Make charts responsive to screen size
         }
 
-        # create tabs to chose rooms
+        # create tabs to choose rooms
         tab1, tab2, tab3 = st.tabs(["Rooms 11-14", "15-18", "21-28"])
         with tab1:
             st.plotly_chart(fig1, use_container_width=True, config=config)
@@ -221,6 +325,7 @@ def calculate_sunlight_remaining(sunrise, sunset):
 
 def main():
     st.set_page_config(page_title="Boiler Temp")
+
     st.markdown(
         """
         <style>
@@ -329,9 +434,18 @@ def main():
                 st.write(alarm)
 
         # plot historical temperature data
-        time_range = st.selectbox("Select Time Range", ['Past Week', 'Past 3 Days', 'Past Day'])
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            time_range = st.selectbox("Select Time Range", ['Past Week', 'Past 3 Days', 'Past Day'])
+        with col2:
+            st.write("")  # adds a blank line
+            overkill_mode = st.checkbox("Overkill Mode")
+
         filtered_df = filter_data(df, time_range)
-        plot_temperatures(filtered_df, time_range)
+        plot_temperatures(filtered_df, time_range, overkill_mode)
+        if overkill_mode:
+            st.subheader("More Info")
+            plot_correlations(filtered_df)
 
     else:
         st.error("No weather data available.")
