@@ -472,7 +472,7 @@ def main():
         /* Dynamically target the main content container to reduce space */
         .st-emotion-cache-bm2z3a.ea3mdgi8 {
             padding-top: 0rem !important;  /* Remove top padding */
-            margin-top: -4rem !important;  /* Adjust top margin */
+            margin-top: -6rem !important;  /* Adjust top margin */
         }
 
         /* Maintain the sidebar visibility */
