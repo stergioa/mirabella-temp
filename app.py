@@ -148,23 +148,39 @@ def plot_correlations(df):
     # Display the heatmap
     st.plotly_chart(fig_corr_matrix, use_container_width=True)
 
+# def forecast_temperature_series_with_average_seasonality(series, periods=288):
+#     # Calculate the number of data points per day (assuming 300-second intervals, there are 288 points in a day)
+#     points_per_day = periods
+#
+#     # Check if there is enough data for 5 days
+#     if len(series) < points_per_day * 5:
+#         raise ValueError("Not enough data to calculate a 5-day average seasonality forecast.")
+#
+#     # Fill in any missing values using interpolation
+#     series = series.interpolate(method='linear')
+#
+#     # Collect the last 5 days' data, ensuring each slice has the correct number of points
+#     recent_5_days_data = []
+#     for i in range(5):
+#         start_idx = -(i + 1) * points_per_day
+#         end_idx = -i * points_per_day if -i * points_per_day != 0 else None
+#         slice_data = series.iloc[start_idx:end_idx].values
+#
+#         # Use interpolation to fill gaps in the slice
+#         if len(slice_data) < points_per_day:
+#             slice_data = np.interp(
+#                 np.arange(points_per_day),  # Points where we need values
+#                 np.arange(len(slice_data)),  # Existing points
+#                 slice_data  # Existing values
+#             )
+#
+#         recent_5_days_data.append(slice_data)
+#
+#     # Calculate the average for each time point across the 5 days
+#     forecast = np.mean(recent_5_days_data, axis=0)
+#
+#     return forecast
 
-
-def forecast_temperature_series_with_average_seasonality(series, periods=288):
-    # Calculate the number of data points per day (assuming 300-second intervals, there are 288 points in a day)
-    points_per_day = periods
-
-    # Check if there is enough data for 5 days
-    if len(series) < points_per_day * 5:
-        raise ValueError("Not enough data to calculate a 5-day average seasonality forecast.")
-
-    # Get the last 5 days' data
-    recent_5_days_data = [series.iloc[-(i + 1) * points_per_day: -i * points_per_day].values for i in range(5)]
-
-    # Calculate the average for each time point across the 5 days
-    forecast = np.mean(recent_5_days_data, axis=0)
-
-    return forecast
 
 
 def plot_temperatures(df, time_range, overkill_mode, unfiltered_df):
@@ -194,15 +210,15 @@ def plot_temperatures(df, time_range, overkill_mode, unfiltered_df):
             periods=288,
             freq='300S'
         )
-        # Forecast temperature for each room using the simplified linear approach
-        forecasted_temps = {
-            'Rooms 11-12': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_1']),
-            'Rooms 13-14': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_2']),
-            'Rooms 15-16': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_3']),
-            'Rooms 17-18': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_4']),
-            'Rooms 21-23': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_5']),
-            'Rooms 24-28': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_6'])
-        }
+        # # Forecast temperature for each room using the simplified linear approach
+        # forecasted_temps = {
+        #     'Rooms 11-12': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_1']),
+        #     'Rooms 13-14': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_2']),
+        #     'Rooms 15-16': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_3']),
+        #     'Rooms 17-18': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_4']),
+        #     'Rooms 21-23': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_5']),
+        #     'Rooms 24-28': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_6'])
+        # }
 
         # Create figures for each room pair
         fig1 = go.Figure()
@@ -284,30 +300,30 @@ def plot_temperatures(df, time_range, overkill_mode, unfiltered_df):
         if overkill_mode:
             for fig in [fig1, fig2, fig3]:
                 fig = add_sun_overlay(fig, df)
-            fig1.add_trace(
-                go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 11-12'],
-                           mode='lines', name='Forecast Rooms 11-12', line=dict(color='red', dash='dash'))
-            )
-            fig1.add_trace(
-                go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 13-14'],
-                           mode='lines', name='Forecast Rooms 13-14', line=dict(color='blue', dash='dash'))
-            )
-            fig2.add_trace(
-                go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 15-16'],
-                           mode='lines', name='Forecast Rooms 15-16', line=dict(color='red', dash='dash'))
-            )
-            fig2.add_trace(
-                go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 17-18'],
-                           mode='lines', name='Forecast Rooms 17-18', line=dict(color='blue', dash='dash'))
-            )
-            fig3.add_trace(
-                go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 21-23'],
-                           mode='lines', name='Forecast Rooms 21-23', line=dict(color='red', dash='dash'))
-            )
-            fig3.add_trace(
-                go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 24-28'],
-                           mode='lines', name='Forecast Rooms 24-28', line=dict(color='blue', dash='dash'))
-            )
+            # fig1.add_trace(
+            #     go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 11-12'],
+            #                mode='lines', name='Forecast Rooms 11-12', line=dict(color='red', dash='dash'))
+            # )
+            # fig1.add_trace(
+            #     go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 13-14'],
+            #                mode='lines', name='Forecast Rooms 13-14', line=dict(color='blue', dash='dash'))
+            # )
+            # fig2.add_trace(
+            #     go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 15-16'],
+            #                mode='lines', name='Forecast Rooms 15-16', line=dict(color='red', dash='dash'))
+            # )
+            # fig2.add_trace(
+            #     go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 17-18'],
+            #                mode='lines', name='Forecast Rooms 17-18', line=dict(color='blue', dash='dash'))
+            # )
+            # fig3.add_trace(
+            #     go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 21-23'],
+            #                mode='lines', name='Forecast Rooms 21-23', line=dict(color='red', dash='dash'))
+            # )
+            # fig3.add_trace(
+            #     go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 24-28'],
+            #                mode='lines', name='Forecast Rooms 24-28', line=dict(color='blue', dash='dash'))
+            # )
 
         # Plotly chart configuration to hide toolbar and disable zoom on mobile
         config = {
