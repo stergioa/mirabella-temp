@@ -145,17 +145,25 @@ def plot_correlations(df):
     # Rename the index and columns of the correlation matrix using the room names
     corr_matrix.rename(index=temp_to_room_map, columns=temp_to_room_map, inplace=True)
 
-    # Create the heatmap
+    # Create the heatmap (keep the original order)
     fig_corr_matrix = go.Figure(data=go.Heatmap(
         z=corr_matrix.values,
         x=corr_matrix.columns,
         y=corr_matrix.index,
         colorscale='Viridis'
     ))
-    fig_corr_matrix.update_layout(title="Boiler Temperature Correlation Matrix")
 
-    # Display the heatmap
+    # Adjust layout to minimize empty space
+    fig_corr_matrix.update_layout(
+        margin=dict(l=20, r=20, t=20, b=20),  # Reduce margins to minimize empty space
+        xaxis_nticks=36  # Increase the number of x-axis ticks if needed
+    )
+
+    # Display the heatmap with the updated settings
+    st.subheader("Boiler Temperature Correlation Matrix")
     st.plotly_chart(fig_corr_matrix, use_container_width=True)
+
+
 
 # def forecast_temperature_series_with_average_seasonality(series, periods=288):
 #     # Calculate the number of data points per day (assuming 300-second intervals, there are 288 points in a day)
@@ -210,15 +218,15 @@ def plot_temperatures(df, time_range, overkill_mode, unfiltered_df):
             xaxis=dict(title_font=dict(size=14), automargin=True),  # X-axis title with auto margins
             yaxis=dict(title_font=dict(size=14), automargin=True),  # Y-axis title with auto margins
             margin=dict(l=20, r=20, t=40, b=40),  # Tighter margins
-            height=300
+            height=380
         )
 
-        # Forecast temperature for each room using ARIMA
-        forecast_times = pd.date_range(
-            start=df['timestamp'].iloc[-1] + pd.Timedelta(seconds=300),
-            periods=288,
-            freq='300S'
-        )
+        # # Forecast temperature for each room using ARIMA
+        # forecast_times = pd.date_range(
+        #     start=df['timestamp'].iloc[-1] + pd.Timedelta(seconds=300),
+        #     periods=288,
+        #     freq='300S'
+        # )
         # # Forecast temperature for each room using the simplified linear approach
         # forecasted_temps = {
         #     'Rooms 11-12': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_1']),
@@ -430,20 +438,27 @@ def main():
     st.markdown(
         """
         <style>
-        /* Hide the header completely */
+        /* Hide the default Streamlit header */
         header.stAppHeader {
-            display: none; /* Completely remove the header */
+            display: none;
         }
 
-        /* Remove padding and margin from the main container to eliminate space */
+        /* Adjust the main app container to reduce top margin and padding */
         .stApp {
-            padding-top: -3rem !important;  /* Set top padding to zero */
-            margin-top: -3rem !important;   /* Set top margin to zero */
+            padding-top: 0rem !important;  /* Ensure there's no padding at the top */
+            margin-top: -2rem !important;  /* Reduce margin to minimize space */
         }
 
-        /* Remove padding from the first element inside the main app */
-        .stContainer {
-            padding-top: 0rem;  /* Ensure no padding is applied */
+        /* Dynamically target the main content container to reduce space */
+        .st-emotion-cache-bm2z3a.ea3mdgi8 {
+            padding-top: 0rem !important;  /* Remove top padding */
+            margin-top: -4rem !important;  /* Adjust top margin */
+        }
+
+        /* Maintain the sidebar visibility */
+        .stSidebar {
+            padding-top: 0rem;  /* Adjust padding to keep sidebar from getting lost */
+            width: 250px;
         }
         </style>
         """,
@@ -546,7 +561,6 @@ def main():
         filtered_df = filter_data(df, time_range)
         plot_temperatures(filtered_df, time_range, overkill_mode, unfiltered_df)
         if overkill_mode:
-            st.subheader("More Info")
             plot_correlations(filtered_df)
             plot_correlation_gauges(df)
 
