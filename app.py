@@ -376,18 +376,39 @@ def plot_correlation_gauges(df):
             fig.update_layout(height=300, width=700, showlegend=False)
             st.plotly_chart(fig, use_container_width=True)
 
-# function to calculate standard deviations of temperatures per boiler
-def calculate_std_per_boiler(df):
-    boiler_std = {
-        'Rooms 11-12': df['temp_1'].std(),
-        'Rooms 13-14': df['temp_2'].std(),
-        'Rooms 15-16': df['temp_3'].std(),
-        'Rooms 17-18': df['temp_4'].std(),
-        'Rooms 21-23': df['temp_5'].std(),
-        'Rooms 24-28': df['temp_6'].std()
-    }
-    return pd.DataFrame(boiler_std.items(), columns=['Rooms', 'Standard Deviation (°C)'])
+import streamlit as st
+import pandas as pd
 
+# function to calculate metrics for each boiler using a loop
+def calculate_metrics_per_boiler(df):
+    rooms = ['Rooms 11-12', 'Rooms 13-14', 'Rooms 15-16', 'Rooms 17-18', 'Rooms 21-23', 'Rooms 24-28']
+    temp_columns = ['temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5', 'temp_6']
+
+    # prepare lists to store each metric
+    std_list, mean_list, min_list, max_list, current_list, trend_list = [], [], [], [], [], []
+
+    for col in temp_columns:
+        std_list.append(round(df[col].std(), 2))
+        mean_list.append(round(df[col].mean(), 2))
+        min_list.append(round(df[col].min(), 2))
+        max_list.append(round(df[col].max(), 2))
+        current_list.append(round(df[col].iloc[-1], 2))
+
+        # calculate trend: positive if last value > mean, negative otherwise
+        trend = "Up" if df[col].iloc[-1] > df[col].mean() else "Down"
+        trend_list.append(trend)
+
+    # create a DataFrame with all metrics
+    metrics_data = {
+        'Rooms': rooms,
+        'Standard Deviation (°C)': std_list,
+        'Mean (°C)': mean_list,
+        'Min (°C)': min_list,
+        'Max (°C)': max_list,
+        'Current (°C)': current_list,
+        'Trend': trend_list
+    }
+    return pd.DataFrame(metrics_data)
 
 def main():
     st.set_page_config(page_title="Boiler Temp")
@@ -524,11 +545,12 @@ def main():
         if overkill_mode:
             plot_correlations(filtered_df)
             plot_correlation_gauges(df)
-            std_df = calculate_std_per_boiler(df)
-            st.subheader("Standard Deviations of Temperatures",
-                         help="(Identify problematic sensors)")
-            st.dataframe(std_df.style.format({'Standard Deviation (°C)': '{:.2f}'}),
-                         use_container_width=True, hide_index=True)
+            metrics_df = calculate_metrics_per_boiler(df)
+            st.subheader("Metrics", help="Metrics to inspect sensors and boiler performance.")
+            st.dataframe(metrics_df, hide_index=True, use_container_width=True)
+
+
+
 
 
     else:
