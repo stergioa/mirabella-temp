@@ -21,7 +21,7 @@ def is_mobile():
 
 # adjust time shift based on the selected time range and device
 def get_time_shift(time_range):
-    if is_mobile():  # Reduce the shift on mobile
+    if is_mobile():
         if time_range == 'Past Week':
             return pd.Timedelta(minutes=800)
         elif time_range == 'Past 3 Days':
@@ -34,7 +34,7 @@ def get_time_shift(time_range):
         elif time_range == 'Past 3 Days':
             return pd.Timedelta(minutes=250)
         elif time_range == 'Past Day':
-            return pd.Timedelta(minutes=80)
+            return pd.Timedelta(minutes=65)
         return pd.Timedelta(minutes=0)
 
 def load_data():
@@ -180,44 +180,8 @@ def plot_correlations(df):
     )
 
     # Display the heatmap with the updated settings
-    st.subheader("Boiler Temperature Correlation Matrix")
+    st.subheader("Boiler Temperature Correlation Matrix", help="(Pearson Correlation)")
     st.plotly_chart(fig_corr_matrix, use_container_width=True)
-
-
-
-# def forecast_temperature_series_with_average_seasonality(series, periods=288):
-#     # Calculate the number of data points per day (assuming 300-second intervals, there are 288 points in a day)
-#     points_per_day = periods
-#
-#     # Check if there is enough data for 5 days
-#     if len(series) < points_per_day * 5:
-#         raise ValueError("Not enough data to calculate a 5-day average seasonality forecast.")
-#
-#     # Fill in any missing values using interpolation
-#     series = series.interpolate(method='linear')
-#
-#     # Collect the last 5 days' data, ensuring each slice has the correct number of points
-#     recent_5_days_data = []
-#     for i in range(5):
-#         start_idx = -(i + 1) * points_per_day
-#         end_idx = -i * points_per_day if -i * points_per_day != 0 else None
-#         slice_data = series.iloc[start_idx:end_idx].values
-#
-#         # Use interpolation to fill gaps in the slice
-#         if len(slice_data) < points_per_day:
-#             slice_data = np.interp(
-#                 np.arange(points_per_day),  # Points where we need values
-#                 np.arange(len(slice_data)),  # Existing points
-#                 slice_data  # Existing values
-#             )
-#
-#         recent_5_days_data.append(slice_data)
-#
-#     # Calculate the average for each time point across the 5 days
-#     forecast = np.mean(recent_5_days_data, axis=0)
-#
-#     return forecast
-
 
 
 def plot_temperatures(df, time_range, overkill_mode, unfiltered_df):
@@ -241,21 +205,6 @@ def plot_temperatures(df, time_range, overkill_mode, unfiltered_df):
             height=380
         )
 
-        # # Forecast temperature for each room using ARIMA
-        # forecast_times = pd.date_range(
-        #     start=df['timestamp'].iloc[-1] + pd.Timedelta(seconds=300),
-        #     periods=288,
-        #     freq='300S'
-        # )
-        # # Forecast temperature for each room using the simplified linear approach
-        # forecasted_temps = {
-        #     'Rooms 11-12': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_1']),
-        #     'Rooms 13-14': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_2']),
-        #     'Rooms 15-16': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_3']),
-        #     'Rooms 17-18': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_4']),
-        #     'Rooms 21-23': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_5']),
-        #     'Rooms 24-28': forecast_temperature_series_with_average_seasonality(unfiltered_df['temp_6'])
-        # }
 
         # Create figures for each room pair
         fig1 = go.Figure()
@@ -336,30 +285,6 @@ def plot_temperatures(df, time_range, overkill_mode, unfiltered_df):
         if overkill_mode:
             for fig in [fig1, fig2, fig3]:
                 fig = add_sun_overlay(fig, df)
-            # fig1.add_trace(
-            #     go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 11-12'],
-            #                mode='lines', name='Forecast Rooms 11-12', line=dict(color='red', dash='dash'))
-            # )
-            # fig1.add_trace(
-            #     go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 13-14'],
-            #                mode='lines', name='Forecast Rooms 13-14', line=dict(color='blue', dash='dash'))
-            # )
-            # fig2.add_trace(
-            #     go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 15-16'],
-            #                mode='lines', name='Forecast Rooms 15-16', line=dict(color='red', dash='dash'))
-            # )
-            # fig2.add_trace(
-            #     go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 17-18'],
-            #                mode='lines', name='Forecast Rooms 17-18', line=dict(color='blue', dash='dash'))
-            # )
-            # fig3.add_trace(
-            #     go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 21-23'],
-            #                mode='lines', name='Forecast Rooms 21-23', line=dict(color='red', dash='dash'))
-            # )
-            # fig3.add_trace(
-            #     go.Scatter(x=forecast_times, y=forecasted_temps['Rooms 24-28'],
-            #                mode='lines', name='Forecast Rooms 24-28', line=dict(color='blue', dash='dash'))
-            # )
 
         # Plotly chart configuration to hide toolbar and disable zoom on mobile
         config = {
@@ -451,6 +376,18 @@ def plot_correlation_gauges(df):
             fig.update_layout(height=300, width=700, showlegend=False)
             st.plotly_chart(fig, use_container_width=True)
 
+# function to calculate standard deviations of temperatures per boiler
+def calculate_std_per_boiler(df):
+    boiler_std = {
+        'Rooms 11-12': df['temp_1'].std(),
+        'Rooms 13-14': df['temp_2'].std(),
+        'Rooms 15-16': df['temp_3'].std(),
+        'Rooms 17-18': df['temp_4'].std(),
+        'Rooms 21-23': df['temp_5'].std(),
+        'Rooms 24-28': df['temp_6'].std()
+    }
+    return pd.DataFrame(boiler_std.items(), columns=['Rooms', 'Standard Deviation (°C)'])
+
 
 def main():
     st.set_page_config(page_title="Boiler Temp")
@@ -516,7 +453,9 @@ def main():
             st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)
 
             # Cloud Coverage
-            st.markdown("<h3 style='text-align: center; margin: 0;'>Cloud Coverage (%)</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='text-align: center; margin: 0;'>Cloud Coverage (%)</h3>",
+                        unsafe_allow_html=True,
+            )
 
             # Using columns for Cloudiness metrics
             col_sidebar_a, col_sidebar_b = st.columns(2)
@@ -528,7 +467,8 @@ def main():
             with col_sidebar_b:
                 st.markdown(
                     f"<h4 style='text-align: center; margin: 0;'>Next 3-Days<br><span style='font-size: 20px;'>{three_day_forecast_avg:.1f} %</span></h4>",
-                    unsafe_allow_html=True
+                    unsafe_allow_html=True,
+                    help="Based on Weather Data. | Next 3-Days is calculated by averaging cloud coverage forecast of daylight hours only."
                 )
 
             # Separator for Daylight Information
@@ -553,7 +493,7 @@ def main():
             # Remaining Sunlight
             st.markdown(
                 f"<h4 style='text-align: center; margin: 0;'>Remaining Sunlight<br><span style='font-size: 20px;'>{sunlight_remaining} %</span></h4>",
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
             # Weather Forecast Link
@@ -572,7 +512,8 @@ def main():
         # plot historical temperature data
         col1, col2 = st.columns([3, 1])
         with col1:
-            time_range = st.selectbox("Select Time Range", ['Past Week', 'Past 3 Days', 'Past Day'], index=1)
+            time_range = st.selectbox("Select Time Range", ['Past Week', 'Past 3 Days', 'Past Day'],
+                                      index=1, help="All visualizations are created based on this time frame")
         with col2:
             st.write("")  # adds a blank line
             st.write("")
@@ -583,6 +524,12 @@ def main():
         if overkill_mode:
             plot_correlations(filtered_df)
             plot_correlation_gauges(df)
+            std_df = calculate_std_per_boiler(df)
+            st.subheader("Standard Deviations of Temperatures",
+                         help="(Identify problematic sensors)")
+            st.dataframe(std_df.style.format({'Standard Deviation (°C)': '{:.2f}'}),
+                         use_container_width=True, hide_index=True)
+
 
     else:
         st.error("No weather data available.")
